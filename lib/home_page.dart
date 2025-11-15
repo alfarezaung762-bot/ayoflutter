@@ -15,7 +15,7 @@ class HomePage extends StatelessWidget {
 
             ElevatedButton(
               onPressed: () {
-                Navigator.pushNamed(context, '/tiga');
+                Navigator.pushNamed(context, '/second');
               },
               child: Text("Pergi ke Second Page"),
             ),
