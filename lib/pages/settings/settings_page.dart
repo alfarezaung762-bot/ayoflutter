@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../widgets/side_menu_drawer.dart';
 
-class ChallengePage extends StatelessWidget {
-  const ChallengePage({super.key});
+class SettingsPage extends StatelessWidget {
+  const SettingsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -15,20 +15,26 @@ class ChallengePage extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            _header(
-              scaffoldKey,
-              "Challenge Habit",
-              "Tantang dirimu setiap hari",
-            ),
+            _header(scaffoldKey, "Pengaturan", "Sesuaikan aplikasimu"),
 
-            // Isi Konten Challenge
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.all(20),
-                children: [
-                  _challengeCard("Minum Air 3L", "7 Hari", Colors.blue),
-                  _challengeCard("Lari Pagi", "30 Hari", Colors.red),
-                  _challengeCard("Baca Buku", "14 Hari", Colors.purple),
+                padding: const EdgeInsets.all(16),
+                children: const [
+                  ListTile(
+                    leading: Icon(Icons.person),
+                    title: Text("Akun Saya"),
+                  ),
+                  Divider(),
+                  ListTile(
+                    leading: Icon(Icons.notifications),
+                    title: Text("Notifikasi"),
+                  ),
+                  Divider(),
+                  ListTile(
+                    leading: Icon(Icons.color_lens),
+                    title: Text("Tema Aplikasi"),
+                  ),
                 ],
               ),
             ),
@@ -75,49 +81,6 @@ class ChallengePage extends StatelessWidget {
               subtitle,
               style: const TextStyle(color: Colors.white70),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _challengeCard(String title, String duration, Color color) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 15),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 10),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.2),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Icons.emoji_events, color: color),
-          ),
-          const SizedBox(width: 15),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-              Text(
-                "Durasi: $duration",
-                style: const TextStyle(color: Colors.grey, fontSize: 12),
-              ),
-            ],
           ),
         ],
       ),

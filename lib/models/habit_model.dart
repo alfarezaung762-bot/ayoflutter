@@ -19,11 +19,16 @@ class HabitModel extends HiveObject {
   @HiveField(4)
   bool isDone; // untuk daily repeat
 
+  @HiveField(5)
+  String lastResetDate; // format yyyy-MM-dd
+
   HabitModel({
     required this.title,
     required this.note,
     required this.time,
     required this.priority,
     this.isDone = false,
-  });
+    String? lastResetDate,
+  }) : lastResetDate =
+           lastResetDate ?? DateTime.now().toIso8601String().split('T').first;
 }

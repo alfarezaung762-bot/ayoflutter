@@ -8,7 +8,7 @@ class DailyRepeatPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final box = Hive.box<HabitModel>('daily_habits');
+    final box = Hive.box<HabitModel>('habits');
 
     return Scaffold(
       appBar: AppBar(

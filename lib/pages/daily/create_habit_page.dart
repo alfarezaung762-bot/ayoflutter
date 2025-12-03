@@ -10,122 +10,159 @@ class CreateHabitPage extends StatefulWidget {
 }
 
 class _CreateHabitPageState extends State<CreateHabitPage> {
-  final TextEditingController titleController = TextEditingController();
-  final TextEditingController noteController = TextEditingController();
+  final titleC = TextEditingController();
+  final noteC = TextEditingController();
+  final timeC = TextEditingController();
 
-  TimeOfDay? selectedTime;
-  int priority = 0; // 0=low, 1=medium, 2=high
+  String priority = "SEDANG";
 
-  void saveHabit() async {
-    if (titleController.text.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Judul tidak boleh kosong")));
-      return;
-    }
-
-    final box = Hive.box<HabitModel>('daily_habits');
-
-    final habit = HabitModel(
-      title: titleController.text,
-      note: noteController.text,
-      time: selectedTime != null
-          ? "${selectedTime!.hour.toString().padLeft(2, '0')}:${selectedTime!.minute.toString().padLeft(2, '0')}"
-          : "00:00",
-      priority: priority,
-    );
-
-    await box.add(habit);
-
-    Navigator.pop(context); // kembali setelah save
-  }
-
+  // -----------------------------
+  // Fungsi open Time Picker
+  // -----------------------------
   Future<void> pickTime() async {
-    final time = await showTimePicker(
+    TimeOfDay? picked = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.now(),
     );
 
-    if (time != null) {
-      setState(() => selectedTime = time);
+    if (picked != null) {
+      final formatted =
+          "${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}";
+
+      setState(() {
+        timeC.text = formatted;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final box = Hive.box<HabitModel>('habits');
+
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.orange,
-        title: const Text("BUAT HABIT", style: TextStyle(color: Colors.white)),
-        centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-
-      body: Padding(
-        padding: const EdgeInsets.all(16),
+      backgroundColor: Colors.white,
+      body: SafeArea(
         child: ListView(
+          padding: const EdgeInsets.all(16),
           children: [
-            const Text("Judul"),
-            TextField(
-              controller: titleController,
-              decoration: const InputDecoration(border: OutlineInputBorder()),
-            ),
-            const SizedBox(height: 15),
-
-            const Text("Catatan"),
-            TextField(
-              controller: noteController,
-              maxLines: 3,
-              decoration: const InputDecoration(border: OutlineInputBorder()),
-            ),
-            const SizedBox(height: 15),
-
-            const Text("Waktu"),
-            ElevatedButton(
-              onPressed: pickTime,
-              child: Text(
-                selectedTime == null
-                    ? "Pilih Waktu"
-                    : "${selectedTime!.hour.toString().padLeft(2, '0')}:${selectedTime!.minute.toString().padLeft(2, '0')}",
+            // ========= HEADER =========
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              decoration: const BoxDecoration(color: Color(0xFFFFA726)),
+              child: const Center(
+                child: Text(
+                  "BUAT TUGAS",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+                ),
               ),
             ),
-            const SizedBox(height: 15),
 
-            const Text("Prioritas"),
+            const SizedBox(height: 16),
+
+            const Text("Tugas", style: TextStyle(fontWeight: FontWeight.bold)),
+            TextField(controller: titleC),
+
+            const SizedBox(height: 16),
+
+            const Text(
+              "Catatan",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            TextField(controller: noteC, maxLines: 3),
+
+            const SizedBox(height: 16),
+
             Row(
               children: [
-                choice("Low", 0),
-                const SizedBox(width: 10),
-                choice("Medium", 1),
-                const SizedBox(width: 10),
-                choice("High", 2),
+                // =======================
+                // FIELD WAKTU (TimePicker)
+                // =======================
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Waktu",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      TextField(
+                        controller: timeC,
+                        readOnly:
+                            true, // ← tidak bisa diketik biar tidak masuk huruf
+                        onTap: pickTime, // ← buka time picker
+                        decoration: InputDecoration(
+                          suffixIcon: Icon(Icons.access_time),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(width: 16),
+
+                // PRIORITAS
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Prioritas",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      DropdownButtonFormField(
+                        value: priority,
+                        items: ["RENDAH", "SEDANG", "TINGGI"]
+                            .map(
+                              (e) => DropdownMenuItem(value: e, child: Text(e)),
+                            )
+                            .toList(),
+                        onChanged: (v) => setState(() => priority = v!),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
 
-            const SizedBox(height: 30),
+            const SizedBox(height: 32),
 
+            // ====== BUTTON BUAT TUGAS ======
             ElevatedButton(
+              onPressed: () {
+                box.add(
+                  HabitModel(
+                    title: titleC.text,
+                    note: noteC.text,
+                    time: timeC.text,
+                    priority: priority == "RENDAH"
+                        ? 0
+                        : priority == "SEDANG"
+                        ? 1
+                        : 2,
+                  ),
+                );
+
+                Navigator.pop(context);
+              },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
+                backgroundColor: const Color(0xFFFFA726),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
-              onPressed: saveHabit,
               child: const Text(
-                "SIMPAN",
-                style: TextStyle(color: Colors.white),
+                "BUAT TUGAS",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: Colors.white,
+                ),
               ),
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget choice(String label, int value) {
-    return ChoiceChip(
-      label: Text(label),
-      selected: priority == value,
-      onSelected: (_) => setState(() => priority = value),
     );
   }
 }

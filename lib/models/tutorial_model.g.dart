@@ -1,47 +1,38 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'habit_model.dart';
+part of 'tutorial_model.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class HabitModelAdapter extends TypeAdapter<HabitModel> {
+class TutorialModelAdapter extends TypeAdapter<TutorialModel> {
   @override
-  final int typeId = 0;
+  final int typeId = 2;
 
   @override
-  HabitModel read(BinaryReader reader) {
+  TutorialModel read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return HabitModel(
+    return TutorialModel(
       title: fields[0] as String,
-      note: fields[1] as String,
-      time: fields[2] as String,
-      priority: fields[3] as int,
-      isDone: fields[4] as bool,
-      lastResetDate: fields[5] as String?,
+      description: fields[1] as String,
+      videoUrl: fields[2] as String,
     );
   }
 
   @override
-  void write(BinaryWriter writer, HabitModel obj) {
+  void write(BinaryWriter writer, TutorialModel obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(3)
       ..writeByte(0)
       ..write(obj.title)
       ..writeByte(1)
-      ..write(obj.note)
+      ..write(obj.description)
       ..writeByte(2)
-      ..write(obj.time)
-      ..writeByte(3)
-      ..write(obj.priority)
-      ..writeByte(4)
-      ..write(obj.isDone)
-      ..writeByte(5)
-      ..write(obj.lastResetDate);
+      ..write(obj.videoUrl);
   }
 
   @override
@@ -50,7 +41,7 @@ class HabitModelAdapter extends TypeAdapter<HabitModel> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is HabitModelAdapter &&
+      other is TutorialModelAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }
