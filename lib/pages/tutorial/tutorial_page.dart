@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:url_launcher/url_launcher.dart'; // 1. IMPORT PACKAGE
+import 'package:url_launcher/url_launcher.dart';
 import '../../models/tutorial_model.dart';
 import '../../widgets/side_menu_drawer.dart';
 import 'create_tutorial_page.dart';
+import 'video_player_page.dart'; // 1. IMPORT HALAMAN PLAYER
 
 class TutorialPage extends StatefulWidget {
   const TutorialPage({super.key});
@@ -22,11 +23,10 @@ class _TutorialPageState extends State<TutorialPage> {
     box = Hive.box<TutorialModel>('tutorial_box');
   }
 
-  // --- FUNGSI BUKA YOUTUBE ---
+  // --- FUNGSI BUKA YOUTUBE (APP LUAR) ---
   Future<void> _launchYoutube(String url) async {
     final Uri uri = Uri.parse(url);
     try {
-      // Mode externalApplication memaksa buka di App Youtube (bukan browser dalam)
       if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
         throw Exception('Could not launch $url');
       }
@@ -59,7 +59,7 @@ class _TutorialPageState extends State<TutorialPage> {
               ),
               const SizedBox(height: 20),
 
-              // Opsi 1: Buka YouTube
+              // Opsi 1: Buka YouTube (Aplikasi Luar)
               ListTile(
                 leading: const Icon(Icons.open_in_new, color: Colors.red),
                 title: const Text("Buka di Aplikasi YouTube"),
@@ -69,17 +69,20 @@ class _TutorialPageState extends State<TutorialPage> {
                 },
               ),
 
-              // Opsi 2: Tonton di sini (Nanti kita update fiturnya)
+              // Opsi 2: Tonton di sini (IN-APP PLAYER)
               ListTile(
                 leading:
                     const Icon(Icons.play_circle_fill, color: Colors.orange),
                 title: const Text("Putar di Aplikasi Ini"),
                 onTap: () {
-                  Navigator.pop(context);
-                  // Sementara tampilkan pesan dulu
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text("Fitur In-App Player segera hadir!")),
+                  Navigator.pop(context); // Tutup pop up
+
+                  // 2. NAVIGASI KE VIDEO PLAYER PAGE
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => VideoPlayerPage(videoUrl: url),
+                    ),
                   );
                 },
               ),
