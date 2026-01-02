@@ -181,14 +181,18 @@ class _CreateHabitPageState extends State<CreateHabitPage> {
                   assetAudioPath: 'assets/alarm.mp3', // Pastikan file ini ada!
                   loopAudio: true,
                   vibrate: true,
+
+                  // [PERBAIKAN PENTING] Agar alarm TIDAK MATI saat app di-close/kill
+                  androidStopAlarmOnTermination: false,
+
+                  // Tampilkan fullscreen intent
                   androidFullScreenIntent: true,
 
-                  // --- PERBAIKAN DI SINI (Gunakan .fixed) ---
+                  // Pastikan volume maksimal & dipaksa (bisa disesuaikan)
                   volumeSettings: VolumeSettings.fixed(
                     volume: 1.0,
                     volumeEnforced: true,
                   ),
-                  // -----------------------
 
                   notificationSettings: NotificationSettings(
                     title: titleC.text,
