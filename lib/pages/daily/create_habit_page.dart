@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import '../../models/habit_model.dart';
+import 'package:alarm/alarm.dart'; // Pastikan import ini ada
 
 class CreateHabitPage extends StatefulWidget {
   const CreateHabitPage({super.key});
@@ -87,10 +88,9 @@ class _CreateHabitPageState extends State<CreateHabitPage> {
                       ),
                       TextField(
                         controller: timeC,
-                        readOnly:
-                            true, // ← tidak bisa diketik biar tidak masuk huruf
-                        onTap: pickTime, // ← buka time picker
-                        decoration: InputDecoration(
+                        readOnly: true,
+                        onTap: pickTime,
+                        decoration: const InputDecoration(
                           suffixIcon: Icon(Icons.access_time),
                         ),
                       ),
@@ -128,7 +128,86 @@ class _CreateHabitPageState extends State<CreateHabitPage> {
 
             // ====== BUTTON BUAT TUGAS ======
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
+                // [VALIDASI] Cek apakah Judul atau Waktu masih kosong?
+                if (titleC.text.isEmpty || timeC.text.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Harap isi Judul dan Waktu tugas!"),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return; // Stop di sini, jangan lanjut ke bawah
+                }
+
+                // ===============================
+                // 1. AMBIL WAKTU DARI TEXT FIELD
+                // ===============================
+                final now = DateTime.now();
+                final timeParts = timeC.text.split(':');
+                final hour = int.parse(timeParts[0]);
+                final minute = int.parse(timeParts[1]);
+
+                // ===============================
+                // 2. BUAT DATETIME ALARM
+                // ===============================
+                var selectedDateTime = DateTime(
+                  now.year,
+                  now.month,
+                  now.day,
+                  hour,
+                  minute,
+                );
+
+                // ===============================
+                // 3. JIKA WAKTU SUDAH LEWAT → BESOK
+                // ===============================
+                if (selectedDateTime.isBefore(now)) {
+                  selectedDateTime =
+                      selectedDateTime.add(const Duration(days: 1));
+                }
+
+                // ===============================
+                // 4. ID UNIK ALARM
+                // ===============================
+                final alarmId = DateTime.now().millisecondsSinceEpoch % 10000;
+
+                // ===============================
+                // 5. KONFIGURASI ALARM
+                // ===============================
+                final alarmSettings = AlarmSettings(
+                  id: alarmId,
+                  dateTime: selectedDateTime,
+                  assetAudioPath: 'assets/alarm.mp3', // Pastikan file ini ada!
+                  loopAudio: true,
+                  vibrate: true,
+                  androidFullScreenIntent: true,
+
+                  // --- PERBAIKAN DI SINI (Gunakan .fixed) ---
+                  volumeSettings: VolumeSettings.fixed(
+                    volume: 1.0,
+                    volumeEnforced: true,
+                  ),
+                  // -----------------------
+
+                  notificationSettings: NotificationSettings(
+                    title: titleC.text,
+                    body: noteC.text.isEmpty
+                        ? "Waktunya mengerjakan tugas!"
+                        : noteC.text,
+                    stopButton: 'Tunda / Kerjakan',
+                    icon: 'notification_icon',
+                  ),
+                );
+
+                // ===============================
+                // 6. SET ALARM
+                // ===============================
+                await Alarm.set(alarmSettings: alarmSettings);
+
+                // ===============================
+                // 7. SIMPAN KE HIVE
+                // ===============================
                 box.add(
                   HabitModel(
                     title: titleC.text,
@@ -137,12 +216,12 @@ class _CreateHabitPageState extends State<CreateHabitPage> {
                     priority: priority == "RENDAH"
                         ? 0
                         : priority == "SEDANG"
-                        ? 1
-                        : 2,
+                            ? 1
+                            : 2,
                   ),
                 );
 
-                Navigator.pop(context);
+                if (mounted) Navigator.pop(context);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFFFA726),
