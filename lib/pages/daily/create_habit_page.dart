@@ -190,7 +190,7 @@ class _CreateHabitPageState extends State<CreateHabitPage> {
 
                   // Pastikan volume maksimal & dipaksa (bisa disesuaikan)
                   volumeSettings: VolumeSettings.fixed(
-                    volume: 1.0,
+                    volume: null,
                     volumeEnforced: true,
                   ),
 
