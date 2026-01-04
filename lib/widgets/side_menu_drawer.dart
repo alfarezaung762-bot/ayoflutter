@@ -1,15 +1,21 @@
-// lib/widgets/side_menu_drawer.dart
-
 import 'package:flutter/material.dart';
-import '../routes/app_routes.dart'; // Pastikan import routes kamu benar
+import '../routes/app_routes.dart';
 
 class SideMenuDrawer extends StatelessWidget {
   const SideMenuDrawer({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // Cek apakah sedang Dark Mode
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Tentukan warna berdasarkan mode
+    final Color bgColor = isDark ? const Color(0xFF1E1E2C) : Colors.white;
+    final Color textColor = isDark ? Colors.white : Colors.black;
+    final Color menuColor = isDark ? Colors.white70 : const Color(0xFF1A237E);
+
     return Drawer(
-      backgroundColor: Colors.white, // Background putih sesuai desain
+      backgroundColor: bgColor, // Warna dinamis
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.only(
           topRight: Radius.circular(0),
@@ -21,60 +27,55 @@ class SideMenuDrawer extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 10),
           children: [
             // === HEADER: MODE LIST ===
-            const Padding(
-              padding: EdgeInsets.only(left: 16, bottom: 20, top: 10),
+            Padding(
+              padding: const EdgeInsets.only(left: 16, bottom: 20, top: 10),
               child: Text(
                 "Mode List",
                 style: TextStyle(
-                  fontFamily: 'monospace', // Font agak kotak sesuai gambar
+                  fontFamily: 'monospace',
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black,
+                  color: textColor, // Warna dinamis
                 ),
               ),
             ),
 
             // === MENU ITEMS ===
-
-            // 1. PERBAIKAN: Diarahkan ke dailyHome (Halaman Utama)
-            _menuItem(context, "daily repeat", AppRoutes.dailyHome),
-
-            _menuItem(context, "Tugas Bertanggal", AppRoutes.scheduled),
-
-            _menuItem(context, "Challenge Habit", "/challenge"), // Placeholder
-            _menuItem(context, "Video Tutorial", "/tutorial"), // Placeholder
-            _menuItem(context, "Pengaturan", "/settings"), // Placeholder
+            _menuItem(context, "Daily Repeat", AppRoutes.dailyHome, menuColor,
+                textColor),
+            _menuItem(context, "Tugas Bertanggal", AppRoutes.scheduled,
+                menuColor, textColor),
+            _menuItem(context, "Challenge Habit", AppRoutes.challenge,
+                menuColor, textColor),
+            _menuItem(context, "Video Tutorial", AppRoutes.tutorial, menuColor,
+                textColor),
+            _menuItem(context, "Pengaturan", AppRoutes.settings, menuColor,
+                textColor),
           ],
         ),
       ),
     );
   }
 
-  Widget _menuItem(BuildContext context, String title, String routeName) {
+  Widget _menuItem(BuildContext context, String title, String routeName,
+      Color titleColor, Color iconColor) {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
       title: Text(
         title,
-        style: const TextStyle(
-          color: Color(0xFF1A237E), // Warna biru tua/gelap mirip gambar
+        style: TextStyle(
+          color: titleColor, // Warna dinamis
           fontWeight: FontWeight.w600,
           fontSize: 16,
         ),
       ),
-      trailing: const Icon(Icons.arrow_drop_down, color: Colors.black),
+      trailing: Icon(Icons.arrow_drop_down, color: iconColor), // Warna dinamis
       onTap: () {
-        // Tutup drawer dulu
-        Navigator.pop(context);
-
-        // Pindah halaman
+        Navigator.pop(context); // Tutup drawer
         try {
-          // 2. PERBAIKAN: Gunakan pushReplacementNamed agar halaman tidak menumpuk
           Navigator.pushReplacementNamed(context, routeName);
         } catch (e) {
-          print("Route $routeName belum dibuat atau error: $e");
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text("Menu $title belum tersedia")));
+          print("Route error: $e");
         }
       },
     );
