@@ -318,7 +318,7 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
                   payload: 'scheduled',
 
                   volumeSettings: VolumeSettings.fixed(
-                    volume: 1.0,
+                    volume: null,
                     volumeEnforced: true,
                   ),
                   notificationSettings: NotificationSettings(

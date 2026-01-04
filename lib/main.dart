@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:alarm/alarm.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -13,11 +14,17 @@ import 'models/challenge_model.dart';
 // --- IMPORT HALAMAN ALARM ---
 import 'pages/alarm/alarm_ring_page.dart';
 
-// GLOBAL KEY NAVIGASI
+// GLOBAL KEY NAVIGASI (Penting untuk membuka layar dari background)
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Kunci orientasi ke Portrait
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
 
   // Init Hive
   await Hive.initFlutter();
@@ -34,7 +41,7 @@ void main() async {
   await Hive.openBox<TutorialModel>('tutorial_box');
   await Hive.openBox<ChallengeModel>('challenge_box');
 
-  // [BARU] Buka Box untuk Pengaturan
+  // Box Pengaturan
   await Hive.openBox('settings');
 
   // --- INIT ALARM ---
@@ -54,50 +61,94 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-    _checkAndroidNotificationPermission();
 
+    // 1. Cek & Minta Izin
+    _checkAndroidPermissions();
+
+    // 2. Setup Listener Alarm
+    _configureAlarmListener();
+
+    // 3. Cek alarm saat start (VERSI FIX UNTUK ALARM 5.1.5)
+    _checkIfAlarmIsRingingOnStart();
+  }
+
+  void _configureAlarmListener() {
     Alarm.ringStream.stream.listen((alarmSettings) {
-      navigatorKey.currentState?.push(
-        MaterialPageRoute(
-          builder: (context) => AlarmRingPage(alarmSettings: alarmSettings),
-        ),
-      );
+      debugPrint("Alarm Ring Stream Triggered: ${alarmSettings.id}");
+      _navigateToRingPage(alarmSettings);
     });
   }
 
-  Future<void> _checkAndroidNotificationPermission() async {
-    final status = await Permission.notification.status;
-    if (status.isDenied) {
+  // [PERBAIKAN UTAMA UNTUK ALARM 5.1.5]
+  // getRingIds() sudah dihapus, jadi kita pakai logika ini:
+  Future<void> _checkIfAlarmIsRingingOnStart() async {
+    // Tunggu sebentar biar sistem siap
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    // Ambil semua alarm yang terdaftar
+    final allAlarms = await Alarm.getAlarms();
+
+    // Cek satu per satu apakah ada yang sedang 'ringing'
+    for (final alarm in allAlarms) {
+      // Alarm.isRinging(id) adalah cara baru di versi 5.x
+      final isRinging = await Alarm.isRinging(alarm.id);
+
+      if (isRinging) {
+        debugPrint("Active alarm found on start: ${alarm.id}");
+        _navigateToRingPage(alarm);
+        break; // Stop jika sudah ketemu satu
+      }
+    }
+  }
+
+  // Fungsi Navigasi Terpusat
+  void _navigateToRingPage(AlarmSettings settings) {
+    // Pastikan navigator siap
+    if (navigatorKey.currentState == null) return;
+
+    // Gunakan pushReplacement agar user tidak bisa 'back' sembarangan
+    navigatorKey.currentState!.push(
+      MaterialPageRoute(
+        builder: (context) => AlarmRingPage(alarmSettings: settings),
+      ),
+    );
+  }
+
+  Future<void> _checkAndroidPermissions() async {
+    // Izin Notifikasi (Android 13+)
+    if (await Permission.notification.isDenied) {
       await Permission.notification.request();
     }
+    // Izin Alarm Akurat (Android 12+)
     if (await Permission.scheduleExactAlarm.isDenied) {
       await Permission.scheduleExactAlarm.request();
+    }
+    // Izin Overlay / Display Over Other Apps (WAJIB untuk Fullscreen di atas YouTube)
+    if (await Permission.systemAlertWindow.isDenied) {
+      await Permission.systemAlertWindow.request();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // [PENTING] Bungkus MaterialApp dengan ValueListenableBuilder
-    // Ini mendengarkan perubahan di box 'settings'
     return ValueListenableBuilder(
       valueListenable: Hive.box('settings').listenable(),
       builder: (context, Box box, widget) {
-        // Ambil status dark mode (default false/mati)
         final bool isDark = box.get('isDarkMode', defaultValue: false);
 
         return MaterialApp(
           debugShowCheckedModeBanner: false,
-          navigatorKey: navigatorKey,
+          navigatorKey: navigatorKey, // Pasang Global Key
+          title: 'Ayo',
 
           // --- KONFIGURASI TEMA ---
-          // Mode: Ikuti status isDark
           themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
 
-          // TEMA TERANG (Light)
           theme: ThemeData(
             brightness: Brightness.light,
             scaffoldBackgroundColor: const Color(0xFFF7F7F7),
             primaryColor: const Color(0xFFFFA726),
+            cardColor: Colors.white,
             colorScheme: ColorScheme.fromSeed(
               seedColor: const Color(0xFFFFA726),
               brightness: Brightness.light,
@@ -105,16 +156,15 @@ class _MyAppState extends State<MyApp> {
             useMaterial3: true,
           ),
 
-          // TEMA GELAP (Dark)
           darkTheme: ThemeData(
             brightness: Brightness.dark,
-            // Warna background gelap tapi agak biru dikit (Elegan)
             scaffoldBackgroundColor: const Color(0xFF1E1E2C),
             primaryColor: const Color(0xFFFFA726),
-            colorScheme: const ColorScheme.dark(
-              primary: Color(0xFFFFA726), // Tetap Orange
+            cardColor: const Color(0xFF2C2C3E),
+            colorScheme: ColorScheme.dark(
+              primary: const Color(0xFFFFA726),
               secondary: Colors.orangeAccent,
-              surface: Color(0xFF2C2C3E), // Warna kartu di mode gelap
+              surface: const Color(0xFF2C2C3E),
             ),
             useMaterial3: true,
           ),
