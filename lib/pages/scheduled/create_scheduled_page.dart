@@ -31,6 +31,7 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
       firstDate: DateTime.now(),
       lastDate: DateTime(2030),
       builder: (context, child) {
+        // [UI FIX] Tema Picker
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
@@ -81,6 +82,7 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
     }
   }
 
+  // [UI FIX] Helper Input Style
   InputDecoration _inputDecor(String hint, bool isDark) {
     return InputDecoration(
       hintText: hint,
@@ -88,6 +90,7 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
+        // Border putih di dark mode
         borderSide: BorderSide(color: isDark ? Colors.white54 : Colors.grey),
       ),
       focusedBorder: OutlineInputBorder(
@@ -98,14 +101,63 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
     );
   }
 
+  // --- [FUNGSI BARU] POPUP SUKSES DI TENGAH ---
+  void _showSuccessDialog(String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // User tidak bisa klik luar
+      builder: (ctx) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          backgroundColor: isDark ? const Color(0xFF2C2C3E) : Colors.white,
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.check_circle, color: Colors.green, size: 60),
+              const SizedBox(height: 16),
+              Text(
+                "Berhasil!",
+                style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black87),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style:
+                    TextStyle(color: isDark ? Colors.white70 : Colors.black54),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    // Timer: Tutup Dialog & Halaman setelah 1.5 detik
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      if (mounted) {
+        Navigator.of(context).pop(); // Tutup Dialog
+        Navigator.of(context).pop(); // Kembali ke Halaman Sebelumnya
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final box = Hive.box<ScheduledHabitModel>('scheduled_box');
+
+    // [UI FIX] Deteksi Mode
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : Colors.black;
 
     return Scaffold(
+      // [UI FIX] Background mengikuti tema
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+
       appBar: AppBar(
         title: const Text("Buat Jadwal Baru",
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -137,6 +189,7 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
           ),
           const SizedBox(height: 20),
 
+          // TANGGAL & JAM
           Row(
             children: [
               Expanded(
@@ -187,6 +240,7 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
           const SizedBox(height: 8),
           DropdownButtonFormField(
             value: priority,
+            // [UI FIX] Background dropdown
             dropdownColor: isDark ? const Color(0xFF2C2C3E) : Colors.white,
             style: TextStyle(color: textColor),
             decoration: _inputDecor("", isDark),
@@ -198,9 +252,10 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
 
           const SizedBox(height: 40),
 
-          // TOMBOL SIMPAN (REVISI LOGIKA)
+          // TOMBOL SIMPAN
           ElevatedButton(
             onPressed: () async {
+              // 1. VALIDASI
               if (titleC.text.isEmpty ||
                   selectedDate == null ||
                   selectedTime == null) {
@@ -211,7 +266,7 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
               }
 
               try {
-                // 1. Simpan ke Hive TERLEBIH DAHULU agar dapat ID Unik (Key)
+                // 2. SIMPAN KE HIVE DULU (Agar dapat ID Unik)
                 final newItem = ScheduledHabitModel(
                   title: titleC.text,
                   note: noteC.text,
@@ -224,16 +279,13 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
                           : 2,
                 );
 
-                // Simpan & Dapatkan ID dari Hive
                 final int idFromHive = await box.add(newItem);
                 print("Data tersimpan dengan ID Hive: $idFromHive");
 
-                // 2. Gunakan ID Hive sebagai ID Alarm (Dijamin Unik & Stabil)
-                // Kita konversi ke integer aman (jika key hive sangat besar/berbeda tipe)
-                // Tapi biasanya Hive key adalah auto-increment integer, jadi aman.
+                // 3. GUNAKAN ID HIVE SEBAGAI ID ALARM
                 final alarmId = idFromHive;
 
-                // 3. Konfigurasi Alarm
+                // 4. KONFIGURASI ALARM
                 final dateTimeAlarm = DateTime(
                   selectedDate!.year,
                   selectedDate!.month,
@@ -244,7 +296,7 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
                 );
 
                 if (dateTimeAlarm.isBefore(DateTime.now())) {
-                  // Jika waktu sudah lewat, alarm tidak diset, tapi data tersimpan
+                  // Jika waktu lewat, tampilkan pesan error, tapi data tetap tersimpan
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                       content:
                           Text("Tugas disimpan, tapi waktu alarm sudah lewat."),
@@ -254,17 +306,19 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
                 }
 
                 final alarmSettings = AlarmSettings(
-                  id: alarmId, // Gunakan ID dari Hive!
+                  id: alarmId,
                   dateTime: dateTimeAlarm,
                   assetAudioPath: 'assets/alarm.mp3',
                   loopAudio: true,
                   vibrate: true,
                   androidFullScreenIntent: true,
                   androidStopAlarmOnTermination: false,
+
+                  // Payload Navigasi
                   payload: 'scheduled',
 
                   volumeSettings: VolumeSettings.fixed(
-                    volume: null,
+                    volume: 1.0,
                     volumeEnforced: true,
                   ),
                   notificationSettings: NotificationSettings(
@@ -279,7 +333,13 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
                 await Alarm.set(alarmSettings: alarmSettings);
                 print("Alarm sukses diset dengan ID: $alarmId");
 
-                if (context.mounted) Navigator.pop(context);
+                // 5. [POPUP SUKSES]
+                if (mounted) {
+                  // Memanggil fungsi dialog baru
+                  _showSuccessDialog(
+                      "Jadwal '${titleC.text}'\nberhasil disimpan!");
+                }
+                // (Navigator.pop sudah dihandle di dalam _showSuccessDialog)
               } catch (e) {
                 print("Error: $e");
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(

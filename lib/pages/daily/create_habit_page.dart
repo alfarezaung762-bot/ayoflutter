@@ -22,7 +22,7 @@ class _CreateHabitPageState extends State<CreateHabitPage> {
       context: context,
       initialTime: TimeOfDay.now(),
       builder: (context, child) {
-        // Tema Picker agar tetap terang dan terbaca
+        // [UI FIX] Tema Picker agar tetap terang dan terbaca
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
@@ -45,7 +45,58 @@ class _CreateHabitPageState extends State<CreateHabitPage> {
     }
   }
 
-  // [HELPER UI] Input Style Dinamis
+  // --- [FUNGSI BARU] DIALOG SUKSES DI TENGAH ---
+  void _showSuccessDialog(String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // User tidak bisa klik luar untuk tutup
+      builder: (ctx) {
+        // Cek mode untuk warna background dialog
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+
+        return AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          backgroundColor: isDark ? const Color(0xFF2C2C3E) : Colors.white,
+          contentPadding:
+              const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
+          content: Column(
+            mainAxisSize: MainAxisSize.min, // Ukuran menyesuaikan konten
+            children: [
+              const Icon(Icons.check_circle,
+                  color: Colors.green, size: 70), // Ukuran ikon diperbesar
+              const SizedBox(height: 20),
+              Text(
+                "Berhasil!",
+                style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black87),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    fontSize: 16,
+                    color: isDark ? Colors.white70 : Colors.black54),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    // Timer: Tutup Dialog & Halaman setelah 1.5 detik
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      if (mounted) {
+        Navigator.of(context).pop(); // Tutup Dialog
+        Navigator.of(context).pop(); // Kembali ke Halaman Sebelumnya
+      }
+    });
+  }
+
+  // --- HELPER UI: INPUT STYLE ---
   InputDecoration _inputDecor(String hint, bool isDark) {
     return InputDecoration(
       hintText: hint,
@@ -53,7 +104,7 @@ class _CreateHabitPageState extends State<CreateHabitPage> {
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        // Garis putih di dark mode, abu di light mode
+        // Border putih di dark mode, abu di light mode
         borderSide: BorderSide(color: isDark ? Colors.white54 : Colors.grey),
       ),
       focusedBorder: OutlineInputBorder(
@@ -68,12 +119,12 @@ class _CreateHabitPageState extends State<CreateHabitPage> {
   Widget build(BuildContext context) {
     final box = Hive.box<HabitModel>('habits');
 
-    // [UI FIX] Deteksi Mode
+    // [UI] Deteksi Mode Gelap
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : Colors.black;
 
     return Scaffold(
-      // [UI FIX] Background mengikuti tema
+      // [UI] Background mengikuti tema
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
 
       appBar: AppBar(
@@ -87,15 +138,12 @@ class _CreateHabitPageState extends State<CreateHabitPage> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Header "BUAT TUGAS" dihapus karena sudah ada di AppBar
-          // Agar tampilan lebih bersih
-
           Text("Tugas",
               style: TextStyle(fontWeight: FontWeight.bold, color: textColor)),
           const SizedBox(height: 8),
           TextField(
             controller: titleC,
-            style: TextStyle(color: textColor), // Warna teks input
+            style: TextStyle(color: textColor), // Warna teks input dinamis
             decoration: _inputDecor("Nama tugas", isDark),
           ),
 
@@ -146,7 +194,7 @@ class _CreateHabitPageState extends State<CreateHabitPage> {
                     const SizedBox(height: 8),
                     DropdownButtonFormField(
                       value: priority,
-                      // [UI FIX] Dropdown menu warna
+                      // [UI] Dropdown background dinamis
                       dropdownColor:
                           isDark ? const Color(0xFF2C2C3E) : Colors.white,
                       style: TextStyle(color: textColor),
@@ -165,8 +213,10 @@ class _CreateHabitPageState extends State<CreateHabitPage> {
 
           const SizedBox(height: 32),
 
+          // ====== TOMBOL SIMPAN ======
           ElevatedButton(
             onPressed: () async {
+              // 1. VALIDASI
               if (titleC.text.isEmpty || timeC.text.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -177,7 +227,7 @@ class _CreateHabitPageState extends State<CreateHabitPage> {
                 return;
               }
 
-              // LOGIKA ALARM (SAMA SEPERTI KODEMU)
+              // 2. LOGIKA ALARM
               final now = DateTime.now();
               final timeParts = timeC.text.split(':');
               final hour = int.parse(timeParts[0]);
@@ -191,14 +241,15 @@ class _CreateHabitPageState extends State<CreateHabitPage> {
                 minute,
               );
 
+              // Jika waktu sudah lewat hari ini, set untuk besok
               if (selectedDateTime.isBefore(now)) {
                 selectedDateTime =
                     selectedDateTime.add(const Duration(days: 1));
               }
 
-              // ID Unik (Offset + 5000 agar beda dari Scheduled)
+              // ID Unik (Offset + 5000000 agar beda dari Scheduled)
               final alarmId =
-                  (DateTime.now().millisecondsSinceEpoch % 1000000) + 5000;
+                  (DateTime.now().millisecondsSinceEpoch % 1000000) + 5000000;
 
               final alarmSettings = AlarmSettings(
                 id: alarmId,
@@ -209,13 +260,15 @@ class _CreateHabitPageState extends State<CreateHabitPage> {
                 androidFullScreenIntent: true,
                 androidStopAlarmOnTermination: false,
 
-                payload: 'daily', // Navigasi Benar
+                // Payload untuk navigasi
+                payload: 'daily',
 
                 volumeSettings: VolumeSettings.fixed(
                   volume: null,
                   volumeEnforced: true,
                 ),
                 notificationSettings: NotificationSettings(
+                  // Pastikan judul diambil dari text controller
                   title: titleC.text,
                   body: noteC.text.isEmpty
                       ? "Waktunya mengerjakan tugas!"
@@ -228,6 +281,7 @@ class _CreateHabitPageState extends State<CreateHabitPage> {
               await Alarm.set(alarmSettings: alarmSettings);
               print("Alarm Daily berhasil diset ID: $alarmId");
 
+              // 3. SIMPAN KE HIVE
               box.add(
                 HabitModel(
                   title: titleC.text,
@@ -241,7 +295,14 @@ class _CreateHabitPageState extends State<CreateHabitPage> {
                 ),
               );
 
-              if (mounted) Navigator.pop(context);
+              // 4. [POPUP SUKSES]
+              if (mounted) {
+                // Memanggil fungsi dialog yang baru kita buat
+                _showSuccessDialog("Tugas '${titleC.text}'\nberhasil dibuat!");
+              }
+
+              // NOTE: Kita tidak pakai Navigator.pop disini lagi,
+              // karena sudah dihandle otomatis oleh timer di dalam _showSuccessDialog
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFFFA726),
