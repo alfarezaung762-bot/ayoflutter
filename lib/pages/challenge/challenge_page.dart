@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:alarm/alarm.dart'; // Import untuk stop alarm saat delete
 import '../../models/challenge_model.dart';
 import '../../widgets/side_menu_drawer.dart';
 import 'challenge_detail_page.dart';
@@ -13,7 +14,7 @@ class ChallengePage extends StatefulWidget {
   State<ChallengePage> createState() => _ChallengePageState();
 }
 
-// Custom scroll behavior agar bisa geser pakai mouse di web
+// Custom scroll behavior agar bisa geser pakai mouse di web/desktop
 class MyCustomScrollBehavior extends MaterialScrollBehavior {
   @override
   Set<PointerDeviceKind> get dragDevices => {
@@ -32,10 +33,11 @@ class _ChallengePageState extends State<ChallengePage> {
   void initState() {
     super.initState();
     box = Hive.box<ChallengeModel>('challenge_box');
+
+    // Seed default challenge jika kosong (opsional, bisa dihapus jika ingin kosong)
     _seedDefaultChallenges();
 
-    // ViewportFraction 0.85 agar kartu sebelah "mengintip"
-    _pageController = PageController(viewportFraction: 0.85, initialPage: 0);
+    _pageController = PageController(viewportFraction: 0.90, initialPage: 0);
     _pageController.addListener(() {
       setState(() {
         _currentPage = _pageController.page!;
@@ -49,50 +51,99 @@ class _ChallengePageState extends State<ChallengePage> {
     super.dispose();
   }
 
+  // Isi data awal jika baru install
   void _seedDefaultChallenges() {
     if (box.isEmpty) {
       box.add(ChallengeModel(
-        title: "Happy Morning Challenge",
-        description: "Wake up early and be productive!",
+        title: "Happy Morning",
+        description: "Bangun pagi dan produktif!",
         durationDays: 7,
         colorCode: 0xFF5C6BC0,
-        dailyTasks: ["Drink water", "Meditate for 5 mins", "Make the bed"],
-        isJoined: false, // Default belum join
+        dailyTasks: ["Minum air", "Meditasi 5 menit", "Rapikan kasur"],
+        isJoined: false,
+        todayTaskStatus: [false, false, false],
       ));
       box.add(ChallengeModel(
-        title: "Social Media Detox",
-        description: "Less screen time, more life time.",
+        title: "Detox Sosmed",
+        description: "Kurangi layar, perbanyak hidup.",
         durationDays: 14,
         colorCode: 0xFF263238,
         dailyTasks: [
-          "Turn off notifications",
-          "Read book",
-          "No phone before bed"
+          "Matikan notifikasi",
+          "Baca buku 10 hal",
+          "Hp mati jam 9 malam"
         ],
-        isJoined: false, // Default belum join
+        isJoined: false,
+        todayTaskStatus: [false, false, false],
       ));
     }
   }
 
+  // --- LOGIKA JOIN ---
   void _joinChallenge(ChallengeModel challenge) {
     challenge.isJoined = true;
-    challenge.progressDay = 1;
-    challenge.save();
+    challenge.startDate = DateTime.now(); // Set tanggal mulai hari ini
+    challenge.progressDay = 1; // Hari pertama
+    challenge.save(); // Update Hive
+
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Joined: ${challenge.title}!")),
+      SnackBar(content: Text("Berhasil bergabung: ${challenge.title}!")),
     );
+  }
+
+  // --- LOGIKA HAPUS (DELETE) ---
+  Future<void> _deleteChallenge(ChallengeModel challenge) async {
+    // 1. Konfirmasi User
+    final bool? confirm = await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Hapus Challenge?"),
+        content:
+            const Text("Challenge dan alarm terkait akan dihapus permanen."),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text("Batal")),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text("Hapus", style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      // 2. Matikan Alarm jika ada
+      if (challenge.alarmId != null) {
+        await Alarm.stop(challenge.alarmId!);
+      }
+
+      // 3. Hapus dari Database
+      await challenge.delete();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Challenge dihapus.")),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = Theme.of(context).scaffoldBackgroundColor;
+    final textColor = isDark ? Colors.white : Colors.black87;
+
     return ScrollConfiguration(
       behavior: MyCustomScrollBehavior(),
       child: Scaffold(
         key: scaffoldKey,
-        backgroundColor: const Color(0xFFF7F7F7), // Light Mode
+        backgroundColor: bgColor,
         drawer: const SideMenuDrawer(),
+
+        // APP BAR CUSTOM
         appBar: AppBar(
-          backgroundColor: const Color(0xFFFFA726), // Tema Orange
+          backgroundColor: const Color(0xFFFFA726),
           elevation: 0,
           leading: IconButton(
             icon: const Icon(Icons.menu, color: Colors.white),
@@ -101,63 +152,79 @@ class _ChallengePageState extends State<ChallengePage> {
           title: const Text("Challenges",
               style:
                   TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+          centerTitle: true,
         ),
+
+        // FAB UNTUK TAMBAH BARU
         floatingActionButton: FloatingActionButton.extended(
           onPressed: () {
             Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const CreateChallengePage()));
           },
           backgroundColor: const Color(0xFFFFA726),
-          icon: const Icon(Icons.add),
-          label: const Text("Buat Sendiri",
-              style: TextStyle(fontWeight: FontWeight.bold)),
+          icon: const Icon(Icons.add, color: Colors.white),
+          label: const Text("Buat Baru",
+              style:
+                  TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         ),
+
+        // BODY LISTVIEW
         body: ValueListenableBuilder(
           valueListenable: box.listenable(),
-          builder: (context, box, _) {
+          builder: (context, Box<ChallengeModel> box, _) {
             final allChallenges = box.values.toList();
-            // Filter: Tantangan yang sudah di-join masuk ke slider atas
             final myChallenges =
                 allChallenges.where((c) => c.isJoined).toList();
-            // Filter: Tantangan yang belum di-join (termasuk yang baru dibuat) masuk ke daftar bawah
             final discoverChallenges =
                 allChallenges.where((c) => !c.isJoined).toList();
 
             return ListView(
-              padding: const EdgeInsets.only(top: 16, bottom: 80),
+              padding: const EdgeInsets.only(top: 20, bottom: 100),
               children: [
-                // --- SECTION 1: YOUR CHALLENGES (SLIDER HORIZONTAL) ---
-                if (myChallenges.isNotEmpty) ...[
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20),
-                    child: Text("YOUR CHALLENGES",
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black54,
-                            letterSpacing: 1.2)),
+                // --- SECTION 1: ACTIVE CHALLENGES (SLIDER) ---
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  child: Row(
+                    children: [
+                      Icon(Icons.local_fire_department_rounded,
+                          color: Colors.orange, size: 24),
+                      const SizedBox(width: 8),
+                      Text("Sedang Berjalan",
+                          style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 18,
+                              color: textColor)),
+                    ],
                   ),
-                  const SizedBox(height: 15),
+                ),
+
+                if (myChallenges.isEmpty)
+                  _emptyState(isDark,
+                      "Belum ada challenge aktif.\nAyo pilih satu di bawah!")
+                else
                   SizedBox(
-                    height: 200,
+                    height: 220, // Tinggi kartu
                     child: PageView.builder(
                       controller: _pageController,
                       itemCount: myChallenges.length,
                       padEnds: false,
                       physics: const BouncingScrollPhysics(),
                       itemBuilder: (context, index) {
-                        // Efek skala agar kartu aktif terlihat lebih menonjol
+                        // Efek Scale Animasi
                         double scale = 1.0;
                         if (_currentPage >= index - 1 &&
                             _currentPage <= index + 1) {
-                          scale = 1.0 - ((_currentPage - index).abs() * 0.1);
+                          scale = 1.0 - ((_currentPage - index).abs() * 0.05);
                         } else {
-                          scale = 0.9;
+                          scale = 0.95;
                         }
 
                         return Transform.scale(
                           scale: scale,
                           child: Padding(
-                            padding: const EdgeInsets.only(right: 10),
+                            padding: const EdgeInsets.only(
+                                left: 20, right: 5), // Spasi antar kartu
                             child: _activeChallengeCard(
                                 context, myChallenges[index]),
                           ),
@@ -165,26 +232,30 @@ class _ChallengePageState extends State<ChallengePage> {
                       },
                     ),
                   ),
-                  const SizedBox(height: 25),
-                ],
 
-                // --- SECTION 2: ALL CHALLENGES (DAFTAR VERTIKAL) ---
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20),
-                  child: Text("ALL CHALLENGES",
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black54,
-                          letterSpacing: 1.2)),
+                const SizedBox(height: 30),
+
+                // --- SECTION 2: DISCOVER (VERTICAL LIST) ---
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  child: Row(
+                    children: [
+                      Icon(Icons.explore_rounded,
+                          color: Colors.blueAccent, size: 24),
+                      const SizedBox(width: 8),
+                      Text("Temukan Challenge",
+                          style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 18,
+                              color: textColor)),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 15),
+
                 if (discoverChallenges.isEmpty)
-                  const Center(
-                      child: Padding(
-                    padding: EdgeInsets.all(20.0),
-                    child: Text("Belum ada tantangan baru",
-                        style: TextStyle(color: Colors.grey)),
-                  ))
+                  _emptyState(isDark,
+                      "Semua challenge sudah diambil!\nBuat challenge baru yuk.")
                 else
                   ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -192,7 +263,8 @@ class _ChallengePageState extends State<ChallengePage> {
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: discoverChallenges.length,
                     itemBuilder: (context, index) {
-                      return _recommendationCard(discoverChallenges[index]);
+                      return _recommendationCard(
+                          context, discoverChallenges[index], isDark);
                     },
                   ),
               ],
@@ -203,11 +275,27 @@ class _ChallengePageState extends State<ChallengePage> {
     );
   }
 
-  // --- KARTU SLIDER (YOUR CHALLENGE) ---
+  // --- WIDGET KARTU AKTIF (SLIDER) ---
   Widget _activeChallengeCard(BuildContext context, ChallengeModel c) {
+    // [FIX] RUMUS BARU: Menyamakan dengan Logic di Detail Page
+    // 1. Hari yang sudah lewat
+    int pastDays = (c.progressDay - 1).clamp(0, c.durationDays);
+
+    // 2. Kontribusi tugas hari ini
+    int tasksDoneToday = c.todayTaskStatus.where((done) => done).length;
+    int totalTasks = c.dailyTasks.length;
+    double todayContribution =
+        totalTasks == 0 ? 0 : (tasksDoneToday / totalTasks);
+
+    // 3. Gabungkan
+    double progressPercent = (pastDays + todayContribution) / c.durationDays;
+
+    // Clamp agar tidak lebih dari 1.0 (100%)
+    progressPercent = progressPercent.clamp(0.0, 1.0);
+
     return GestureDetector(
       onTap: () {
-        // Navigasi ke halaman DETAIL berbeda
+        // Navigasi ke Detail Page (Tahap 4)
         Navigator.push(
             context,
             MaterialPageRoute(
@@ -216,54 +304,95 @@ class _ChallengePageState extends State<ChallengePage> {
       child: Container(
         decoration: BoxDecoration(
           color: Color(c.colorCode),
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Color(c.colorCode).withOpacity(0.3),
-              blurRadius: 12,
+              color: Color(c.colorCode).withOpacity(0.4),
+              blurRadius: 10,
               offset: const Offset(0, 6),
             ),
           ],
         ),
         child: Stack(
           children: [
-            // Dekorasi Ikon Matahari Transparan
+            // Hiasan Background (Lingkaran Transparan)
             Positioned(
-              right: -10,
-              bottom: -10,
-              child: Opacity(
-                opacity: 0.15,
-                child:
-                    const Icon(Icons.wb_sunny, size: 140, color: Colors.white),
+              right: -20,
+              top: -20,
+              child: CircleAvatar(
+                radius: 60,
+                backgroundColor: Colors.white.withOpacity(0.1),
               ),
             ),
+
             Padding(
-              padding: const EdgeInsets.all(22),
+              padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    c.title,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold),
-                  ),
+                  // Header Kartu (Judul & Tombol Hapus)
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: const BoxDecoration(
-                            color: Colors.white24, shape: BoxShape.circle),
-                        child: const Icon(Icons.flash_on,
-                            color: Colors.white, size: 20),
+                      Expanded(
+                        child: Text(
+                          c.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              height: 1.2),
+                        ),
                       ),
-                      const SizedBox(width: 10),
-                      const Text("Active Progress",
-                          style: TextStyle(color: Colors.white, fontSize: 15)),
+                      // Tombol Hapus Kecil
+                      GestureDetector(
+                        onTap: () => _deleteChallenge(c),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.delete_outline,
+                              color: Colors.white70, size: 20),
+                        ),
+                      ),
                     ],
-                  )
+                  ),
+
+                  // Info Progress
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text("Day ${c.progressDay} of ${c.durationDays}",
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600)),
+                          Text("${(progressPercent * 100).toInt()}%",
+                              style: const TextStyle(color: Colors.white70)),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      // Progress Bar
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: LinearProgressIndicator(
+                          value: progressPercent,
+                          minHeight: 6,
+                          backgroundColor: Colors.black.withOpacity(0.2),
+                          valueColor:
+                              const AlwaysStoppedAnimation(Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -273,58 +402,108 @@ class _ChallengePageState extends State<ChallengePage> {
     );
   }
 
-  // --- KARTU DAFTAR (ALL CHALLENGE) ---
-  Widget _recommendationCard(ChallengeModel c) {
+  // --- WIDGET KARTU REKOMENDASI (LIST VERTIKAL) ---
+  Widget _recommendationCard(
+      BuildContext context, ChallengeModel c, bool isDark) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        color: isDark ? const Color(0xFF2C2C3E) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border:
+            Border.all(color: isDark ? Colors.white10 : Colors.grey.shade100),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4))
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          )
         ],
       ),
       child: Row(
         children: [
+          // Ikon Warna Kiri
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: Color(c.colorCode).withOpacity(0.15),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Icon(Icons.emoji_events_rounded,
+                color: Color(c.colorCode), size: 28),
+          ),
+
+          const SizedBox(width: 16),
+
+          // Teks Tengah
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(c.title,
-                    style: const TextStyle(
-                        color: Colors.black87,
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold)),
-                const SizedBox(height: 6),
-                Text("${c.durationDays} days challenge",
-                    style: const TextStyle(color: Colors.black54)),
-                const SizedBox(height: 12),
-
-                // TOMBOL JOIN UNTUK PINDAH KE ATAS
-                ElevatedButton(
-                  onPressed: () => _joinChallenge(c),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFFF3E0),
-                    foregroundColor: Colors.orange,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: const Text("JOIN CHALLENGE",
-                      style:
-                          TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                )
+                Text(
+                  c.title,
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: isDark ? Colors.white : Colors.black87),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "${c.durationDays} hari • ${c.dailyTasks.length} tugas/hari",
+                  style: TextStyle(
+                      color: isDark ? Colors.white54 : Colors.grey,
+                      fontSize: 12),
+                ),
               ],
             ),
           ),
-          // Ikon pemanis
-          Icon(Icons.emoji_events_outlined,
-              size: 50, color: Color(c.colorCode).withOpacity(0.5)),
+
+          // Tombol Aksi (Join & Delete)
+          Row(
+            children: [
+              // Tombol Hapus (Kecil)
+              IconButton(
+                onPressed: () => _deleteChallenge(c),
+                icon: Icon(Icons.delete_outline,
+                    color: Colors.grey.shade400, size: 20),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+              const SizedBox(width: 12),
+              // Tombol Join
+              ElevatedButton(
+                onPressed: () => _joinChallenge(c),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:
+                      isDark ? Colors.white10 : const Color(0xFFFFF3E0),
+                  foregroundColor: Colors.orange,
+                  elevation: 0,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text("GABUNG",
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+              ),
+            ],
+          )
         ],
+      ),
+    );
+  }
+
+  Widget _emptyState(bool isDark, String message) {
+    return Container(
+      padding: const EdgeInsets.all(30),
+      alignment: Alignment.center,
+      child: Text(
+        message,
+        textAlign: TextAlign.center,
+        style: TextStyle(color: isDark ? Colors.white38 : Colors.grey),
       ),
     );
   }

@@ -1,10 +1,11 @@
 import 'package:alarm/alarm.dart';
 import 'package:flutter/material.dart';
 
-// Import kedua halaman tujuan
-// Pastikan path ini benar sesuai struktur foldermu
+// Import semua halaman tujuan
 import '../daily/daily_home_page.dart';
 import '../scheduled/scheduled_page.dart';
+// [BARU] Import Challenge Page agar bisa diarahkan kesana
+import '../challenge/challenge_page.dart';
 
 class AlarmRingPage extends StatelessWidget {
   final AlarmSettings alarmSettings;
@@ -21,6 +22,12 @@ class AlarmRingPage extends StatelessWidget {
     final titleColor = isDark ? Colors.white : Colors.black87;
     final bodyColor = isDark ? Colors.white70 : Colors.grey[700];
     final accentColor = const Color(0xFFFFA726); // Orange
+
+    // [LOGIKA UI] Cek apakah body berisi instruksi sistem (KETUK DISINI)?
+    // Jika ya, kita sembunyikan text itu di layar ini agar rapi.
+    final String bodyText = alarmSettings.notificationSettings.body;
+    final bool isSystemInstruction =
+        bodyText.contains("KETUK DISINI") || bodyText.contains("Ketuk untuk");
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -53,23 +60,27 @@ class AlarmRingPage extends StatelessWidget {
                       height: 1.2,
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.white10 : Colors.grey[100],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      alarmSettings.notificationSettings.body,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 18,
-                        color: bodyColor,
+
+                  // [UI FIX] Hanya tampilkan kotak teks jika BUKAN instruksi sistem
+                  if (!isSystemInstruction) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white10 : Colors.grey[100],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        bodyText,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: bodyColor,
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
               ),
 
@@ -104,33 +115,56 @@ class AlarmRingPage extends StatelessWidget {
               // --- BAGIAN BAWAH: TOMBOL AKSI ---
               Column(
                 children: [
-                  // TOMBOL KERJAKAN (Fix Navigasi)
+                  // TOMBOL KERJAKAN
                   SizedBox(
                     width: double.infinity,
                     height: 56,
                     child: ElevatedButton(
                       onPressed: () async {
-                        // 1. Matikan Alarm
+                        // 1. Matikan Alarm saat ini
                         await Alarm.stop(alarmSettings.id);
 
-                        // 2. Navigasi Pintar (Gunakan pushAndRemoveUntil)
+                        // 2. [LOGIKA BARU] Reschedule Alarm untuk BESOK
+                        // Ini berlaku untuk 'daily' habit DAN 'challenge' habit
+                        if (alarmSettings.payload == 'daily' ||
+                            alarmSettings.payload == 'challenge') {
+                          // Buat jadwal untuk besok di jam yang sama
+                          final nextAlarmDateTime = alarmSettings.dateTime
+                              .add(const Duration(days: 1));
+
+                          final nextAlarm = alarmSettings.copyWith(
+                            dateTime: nextAlarmDateTime,
+                          );
+
+                          await Alarm.set(alarmSettings: nextAlarm);
+                          debugPrint(
+                              "Alarm dijadwalkan ulang untuk besok: $nextAlarmDateTime");
+                        }
+
+                        // 3. Navigasi Pintar
                         if (context.mounted) {
                           if (alarmSettings.payload == 'scheduled') {
-                            // Hapus semua route dan buka ScheduledPage
+                            // Ke Halaman Scheduled
                             Navigator.pushAndRemoveUntil(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const ScheduledPage(),
-                              ),
+                                  builder: (context) => const ScheduledPage()),
+                              (route) => false,
+                            );
+                          } else if (alarmSettings.payload == 'challenge') {
+                            // [BARU] Ke Halaman Challenge
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => const ChallengePage()),
                               (route) => false,
                             );
                           } else {
-                            // Hapus semua route dan buka DailyHomePage
+                            // Default: Ke Daily Home
                             Navigator.pushAndRemoveUntil(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const DailyHomePage(),
-                              ),
+                                  builder: (context) => const DailyHomePage()),
                               (route) => false,
                             );
                           }
@@ -176,6 +210,7 @@ class AlarmRingPage extends StatelessWidget {
                             title: alarmSettings.notificationSettings.title,
                             body:
                                 "Snooze: ${alarmSettings.notificationSettings.body}",
+                            // Tetap gunakan settingan lama (null jika challenge)
                             stopButton:
                                 alarmSettings.notificationSettings.stopButton,
                             icon: alarmSettings.notificationSettings.icon,
@@ -184,19 +219,15 @@ class AlarmRingPage extends StatelessWidget {
 
                         await Alarm.set(alarmSettings: newAlarmSettings);
 
-                        // Keluar dari halaman alarm
-                        // Jika ini satu-satunya halaman, SystemNavigator.pop() opsional,
-                        // tapi Navigator.pop() biasanya aman.
                         if (context.mounted) {
                           if (Navigator.canPop(context)) {
                             Navigator.pop(context);
                           } else {
-                            // Jika tidak bisa pop (misal app dibuka dari nol), arahkan ke Home
                             Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) =>
-                                        const DailyHomePage()));
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => const DailyHomePage()),
+                            );
                           }
                         }
                       },
