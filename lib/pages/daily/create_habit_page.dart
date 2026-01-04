@@ -173,22 +173,25 @@ class _CreateHabitPageState extends State<CreateHabitPage> {
                 final alarmId = DateTime.now().millisecondsSinceEpoch % 10000;
 
                 // ===============================
-                // 5. KONFIGURASI ALARM
+                // 5. KONFIGURASI ALARM (DAILY)
                 // ===============================
+
+                // Catatan: Sesuai dokumentasi alarm 5.1.5, kita gunakan 'payload'
                 final alarmSettings = AlarmSettings(
                   id: alarmId,
                   dateTime: selectedDateTime,
-                  assetAudioPath: 'assets/alarm.mp3', // Pastikan file ini ada!
+                  assetAudioPath:
+                      'assets/alarm.mp3', // Pastikan file ini ada di assets
                   loopAudio: true,
                   vibrate: true,
-
-                  // [PERBAIKAN PENTING] Agar alarm TIDAK MATI saat app di-close/kill
+                  androidFullScreenIntent: true,
                   androidStopAlarmOnTermination: false,
 
-                  // Tampilkan fullscreen intent
-                  androidFullScreenIntent: true,
+                  // [PERBAIKAN] Menggunakan 'payload' sesuai dokumentasi v5.1.5
+                  payload: 'daily',
 
-                  // Pastikan volume maksimal & dipaksa (bisa disesuaikan)
+                  // Volume Settings
+                  // Jika .fixed tidak dikenali, gunakan VolumeSettings(volume: null, fadeDuration: null, volumeEnforced: true)
                   volumeSettings: VolumeSettings.fixed(
                     volume: null,
                     volumeEnforced: true,

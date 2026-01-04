@@ -1,9 +1,9 @@
 import 'package:alarm/alarm.dart';
 import 'package:flutter/material.dart';
 
-// [PERBAIKAN 1] Gunakan jalur relatif (titik dua) agar pasti ketemu,
-// tidak peduli apa nama package-nya.
+// Import kedua halaman tujuan
 import '../daily/daily_home_page.dart';
+import '../scheduled/scheduled_page.dart'; // Pastikan path ini benar
 
 class AlarmRingPage extends StatelessWidget {
   final AlarmSettings alarmSettings;
@@ -56,14 +56,14 @@ class AlarmRingPage extends StatelessWidget {
                 // ==========================
                 ElevatedButton(
                   onPressed: () async {
-                    // A. Matikan alarm yang sedang bunyi sekarang
+                    // A. Matikan alarm saat ini
                     await Alarm.stop(alarmSettings.id);
 
-                    // B. Atur waktu baru (5 menit dari sekarang)
+                    // B. Set waktu baru (5 menit lagi)
                     final now = DateTime.now();
                     final newTime = now.add(const Duration(minutes: 5));
 
-                    // C. [PERBAIKAN 2] Masukkan body ke dalam notificationSettings
+                    // C. Buat alarm baru (Copy settings lama termasuk payload)
                     final newAlarmSettings = alarmSettings.copyWith(
                       dateTime: newTime,
                       notificationSettings: NotificationSettings(
@@ -76,10 +76,10 @@ class AlarmRingPage extends StatelessWidget {
                       ),
                     );
 
-                    // D. Set alarm baru
+                    // D. Jadwalkan ulang
                     await Alarm.set(alarmSettings: newAlarmSettings);
 
-                    // E. Tutup halaman ini
+                    // E. Tutup halaman
                     if (context.mounted) {
                       Navigator.pop(context);
                     }
@@ -96,25 +96,37 @@ class AlarmRingPage extends StatelessWidget {
                 ),
 
                 // ==========================
-                // 2. TOMBOL KERJAKAN (STOP)
+                // 2. TOMBOL KERJAKAN (STOP & NAVIGASI)
                 // ==========================
                 ElevatedButton(
                   onPressed: () async {
                     // A. Matikan alarm
                     await Alarm.stop(alarmSettings.id);
 
-                    // B. Arahkan pengguna ke Halaman Utama (To Do List)
+                    // B. LOGIKA NAVIGASI BERDASARKAN PAYLOAD
                     if (context.mounted) {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const DailyHomePage(),
-                        ),
-                      );
+                      // Cek Payload yang kita titipkan tadi
+                      if (alarmSettings.payload == 'scheduled') {
+                        // Jika Scheduled Habit -> Ke Halaman Jadwal
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ScheduledPage(),
+                          ),
+                        );
+                      } else {
+                        // Default / Daily -> Ke Halaman Daily Home
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const DailyHomePage(),
+                          ),
+                        );
+                      }
                     }
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFFA726), // Warna Orange
+                    backgroundColor: const Color(0xFFFFA726),
                     padding: const EdgeInsets.symmetric(
                         horizontal: 30, vertical: 15),
                   ),

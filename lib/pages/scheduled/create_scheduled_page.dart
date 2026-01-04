@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
+import 'package:alarm/alarm.dart'; // Import Alarm
 import '../../models/scheduled_habit_model.dart';
 
 class CreateScheduledPage extends StatefulWidget {
@@ -15,10 +16,12 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
   final timeC = TextEditingController();
   final dateC = TextEditingController();
 
-  DateTime? selectedDate;
+  DateTime? selectedDate; // Tanggal yang dipilih (Jamnya 00:00)
+  TimeOfDay? selectedTime; // Jam yang dipilih
   String priority = "SEDANG";
 
-  // --- FUNGSI PEMBERSIH TANGGAL (PENTING!) ---
+  // --- FUNGSI PEMBERSIH TANGGAL ---
+  // Memastikan jam, menit, detik jadi 0 agar bersih
   DateTime _normalizeDate(DateTime date) {
     return DateTime(date.year, date.month, date.day);
   }
@@ -29,14 +32,23 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
       initialDate: DateTime.now(),
       firstDate: DateTime.now(),
       lastDate: DateTime(2030),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFFFFA726), // Orange
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
 
     if (picked != null) {
       setState(() {
-        // Simpan tanggal yang sudah dibersihkan jamnya
         selectedDate = _normalizeDate(picked);
-
-        // Tampilkan di TextField
         dateC.text =
             "${picked.day.toString().padLeft(2, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.year}";
       });
@@ -47,12 +59,27 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
     TimeOfDay? picked = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFFFFA726), // Orange
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
 
     if (picked != null) {
-      final formatted =
-          "${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}";
-      setState(() => timeC.text = formatted);
+      setState(() {
+        selectedTime = picked;
+        final formatted =
+            "${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}";
+        timeC.text = formatted;
+      });
     }
   }
 
@@ -67,18 +94,44 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         backgroundColor: const Color(0xFFFFA726),
         iconTheme: const IconThemeData(color: Colors.white),
+        elevation: 0,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           const Text("Judul Tugas",
               style: TextStyle(fontWeight: FontWeight.bold)),
-          TextField(controller: titleC),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
+          TextField(
+            controller: titleC,
+            decoration: InputDecoration(
+              hintText: "Contoh: Meeting Zoom",
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFFFFA726)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
 
           const Text("Catatan", style: TextStyle(fontWeight: FontWeight.bold)),
-          TextField(controller: noteC, maxLines: 2),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
+          TextField(
+            controller: noteC,
+            maxLines: 2,
+            decoration: InputDecoration(
+              hintText: "Detail tugas...",
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFFFFA726)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
 
           // TANGGAL & JAM
           Row(
@@ -89,13 +142,18 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
                   children: [
                     const Text("Tanggal",
                         style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
                     TextField(
                       controller: dateC,
                       readOnly: true,
                       onTap: pickDate,
                       decoration: const InputDecoration(
-                          suffixIcon:
-                              Icon(Icons.calendar_today, color: Colors.orange)),
+                          hintText: "Pilih Tgl",
+                          border: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(12))),
+                          suffixIcon: Icon(Icons.calendar_today,
+                              color: Color(0xFFFFA726))),
                     ),
                   ],
                 ),
@@ -107,48 +165,121 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
                   children: [
                     const Text("Jam",
                         style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
                     TextField(
                       controller: timeC,
                       readOnly: true,
                       onTap: pickTime,
                       decoration: const InputDecoration(
-                          suffixIcon:
-                              Icon(Icons.access_time, color: Colors.orange)),
+                          hintText: "Pilih Jam",
+                          border: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(12))),
+                          suffixIcon: Icon(Icons.access_time,
+                              color: Color(0xFFFFA726))),
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
 
           const Text("Prioritas",
               style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
           DropdownButtonFormField(
             value: priority,
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(12))),
+            ),
             items: ["RENDAH", "SEDANG", "TINGGI"]
                 .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                 .toList(),
             onChanged: (v) => setState(() => priority = v!),
           ),
 
-          const SizedBox(height: 32),
+          const SizedBox(height: 40),
 
+          // TOMBOL SIMPAN
           ElevatedButton(
             onPressed: () async {
-              if (titleC.text.isEmpty || selectedDate == null) {
+              // 1. Validasi Input
+              if (titleC.text.isEmpty ||
+                  selectedDate == null ||
+                  selectedTime == null) {
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text("Judul dan Tanggal wajib diisi!")));
+                    content: Text("Judul, Tanggal, dan Jam wajib diisi!"),
+                    backgroundColor: Colors.red));
                 return;
               }
 
               try {
-                // SIMPAN KE HIVE (Pastikan pakai tanggal yang sudah dinormalisasi)
+                // 2. Gabungkan Tanggal & Jam Menjadi Satu Waktu Lengkap
+                final dateTimeAlarm = DateTime(
+                  selectedDate!.year,
+                  selectedDate!.month,
+                  selectedDate!.day,
+                  selectedTime!.hour,
+                  selectedTime!.minute,
+                  0, // Detik 0 agar pas
+                );
+
+                // DEBUG PRINT: Cek di console apakah waktunya benar
+                print("Mencoba set alarm untuk: $dateTimeAlarm");
+
+                // 3. Cek apakah waktu sudah lewat?
+                if (dateTimeAlarm.isBefore(DateTime.now())) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content:
+                          Text("Waktu sudah lewat! Pilih waktu masa depan."),
+                      backgroundColor: Colors.red));
+                  return;
+                }
+
+                // 4. Siapkan ID Unik untuk Alarm
+                // Menggunakan ID unik agar tidak bentrok dengan Daily Habit
+                final alarmId = DateTime.now().millisecondsSinceEpoch % 100000;
+
+                // 5. KONFIGURASI ALARM (SCHEDULED) - UPDATED
+                final alarmSettings = AlarmSettings(
+                  id: alarmId,
+                  dateTime: dateTimeAlarm,
+                  assetAudioPath: 'assets/alarm.mp3',
+                  loopAudio: true,
+                  vibrate: true,
+                  androidFullScreenIntent: true,
+                  androidStopAlarmOnTermination: false,
+
+                  // [TAMBAHAN BARU] Penanda bahwa ini adalah Scheduled Habit
+                  // Gunakan 'extraParameter' jika menggunakan package alarm v4+
+                  // Jika package Anda custom/versi lama yang pakai 'payload', ubah 'extraParameter' jadi 'payload'
+                  payload: 'scheduled',
+
+                  volumeSettings: VolumeSettings.fixed(
+                    volume: null,
+                    volumeEnforced: true,
+                  ),
+
+                  notificationSettings: NotificationSettings(
+                    title: "Jadwal: ${titleC.text}",
+                    body:
+                        noteC.text.isEmpty ? "Waktunya jadwalmu!" : noteC.text,
+                    stopButton: 'Selesai',
+                    icon: 'notification_icon',
+                  ),
+                );
+
+                // 6. Eksekusi Set Alarm
+                await Alarm.set(alarmSettings: alarmSettings);
+                print("Alarm berhasil diset ID: $alarmId");
+
+                // 7. Simpan ke Hive (Database Lokal)
                 await box.add(ScheduledHabitModel(
                   title: titleC.text,
                   note: noteC.text,
-                  date:
-                      selectedDate!, // Tanggal ini sudah bersih dari fungsi pickDate
+                  date: selectedDate!,
                   time: timeC.text,
                   priority: priority == "RENDAH"
                       ? 0
@@ -159,18 +290,23 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
 
                 if (context.mounted) Navigator.pop(context);
               } catch (e) {
-                print("Error: $e");
+                print("Error setting alarm: $e");
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text("Gagal set alarm: $e"),
+                    backgroundColor: Colors.red));
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFFA726),
+              backgroundColor: const Color(0xFFFFA726), // Orange
               padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(30)),
             ),
             child: const Text("SIMPAN JADWAL",
                 style: TextStyle(
-                    fontWeight: FontWeight.bold, color: Colors.white)),
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    fontSize: 16)),
           ),
         ],
       ),
