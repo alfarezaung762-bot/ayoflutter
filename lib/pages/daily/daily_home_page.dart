@@ -4,7 +4,6 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../../models/habit_model.dart';
 import 'create_habit_page.dart';
 import 'edit_habit_page.dart';
-// Import Sidebar yang baru kita buat
 import '../../widgets/side_menu_drawer.dart';
 
 class DailyHomePage extends StatefulWidget {
@@ -19,18 +18,13 @@ class _DailyHomePageState extends State<DailyHomePage> {
   Duration timeLeft = const Duration(hours: 24);
   Timer? _timer;
 
-  // KEY UNTUK MEMBUKA DRAWER SECARA MANUAL
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   void initState() {
     super.initState();
     box = Hive.box<HabitModel>('habits');
-
-    // 1. Cek reset saat aplikasi pertama kali dibuka (Lazy Reset)
     _checkDailyReset();
-
-    // 2. Jalankan timer untuk hitung mundur visual
     _updateTime();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => _updateTime());
   }
@@ -41,7 +35,6 @@ class _DailyHomePageState extends State<DailyHomePage> {
     super.dispose();
   }
 
-  // --- LOGIKA RESET: Cek Tanggal ---
   void _checkDailyReset() {
     final now = DateTime.now();
     final todayStr = now.toIso8601String().split('T').first;
@@ -55,7 +48,6 @@ class _DailyHomePageState extends State<DailyHomePage> {
     }
   }
 
-  // --- LOGIKA TIMER: Update Hitungan Mundur ---
   void _updateTime() {
     final now = DateTime.now();
     final end = DateTime(now.year, now.month, now.day + 1);
@@ -77,11 +69,14 @@ class _DailyHomePageState extends State<DailyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      key: _scaffoldKey, // 1. Pasang Key di sini
-      backgroundColor: const Color(0xFFF7F7F7),
+    // [UI FIX] Cek Mode Gelap
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-      // 2. Pasang Drawer di sini
+    return Scaffold(
+      key: _scaffoldKey,
+      // [UI FIX] Background mengikuti tema
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+
       drawer: const SideMenuDrawer(),
 
       floatingActionButton: FloatingActionButton.extended(
@@ -93,14 +88,14 @@ class _DailyHomePageState extends State<DailyHomePage> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
         label: const Text(
           "Buat Habit",
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
-        icon: const Icon(Icons.add),
+        icon: const Icon(Icons.add, color: Colors.white),
       ),
       body: SafeArea(
         child: Column(
           children: [
-            // 3. Update Header dengan Tombol Menu
+            // Header
             _header(),
 
             // Timer Text
@@ -108,10 +103,11 @@ class _DailyHomePageState extends State<DailyHomePage> {
               padding: const EdgeInsets.only(top: 10),
               child: Text(
                 "Reset dalam: ${_fmt(timeLeft)}",
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: Colors.black54,
+                  // [UI FIX] Warna teks timer
+                  color: isDark ? Colors.white70 : Colors.black54,
                 ),
               ),
             ),
@@ -134,12 +130,12 @@ class _DailyHomePageState extends State<DailyHomePage> {
                     ),
                     children: [
                       if (today.isNotEmpty) ...[
-                        _sect("Tugas Hari Ini"),
-                        ...today.map(_card),
+                        _sect("Tugas Hari Ini", isDark),
+                        ...today.map((h) => _card(h, isDark)),
                       ],
                       if (done.isNotEmpty) ...[
-                        _sect("Sudah Selesai"),
-                        ...done.map(_card),
+                        _sect("Sudah Selesai", isDark),
+                        ...done.map((h) => _card(h, isDark)),
                       ],
                       const SizedBox(height: 80),
                     ],
@@ -153,7 +149,7 @@ class _DailyHomePageState extends State<DailyHomePage> {
     );
   }
 
-  // --- WIDGET HEADER BARU (Dengan Tombol Menu) ---
+  // --- WIDGET HEADER BARU ---
   Widget _header() {
     return Container(
       width: double.infinity,
@@ -165,18 +161,15 @@ class _DailyHomePageState extends State<DailyHomePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Baris atas: Icon Menu + Judul
           Row(
             children: [
               IconButton(
                 onPressed: () {
-                  // Buka Drawer pakai key
                   _scaffoldKey.currentState?.openDrawer();
                 },
                 icon: const Icon(Icons.menu, color: Colors.white, size: 28),
                 padding: EdgeInsets.zero,
-                constraints:
-                    const BoxConstraints(), // Biar tidak ada padding default
+                constraints: const BoxConstraints(),
                 visualDensity: VisualDensity.compact,
               ),
               const SizedBox(width: 12),
@@ -192,7 +185,7 @@ class _DailyHomePageState extends State<DailyHomePage> {
           ),
           const SizedBox(height: 10),
           const Padding(
-            padding: EdgeInsets.only(left: 4), // Sedikit indent biar rapi
+            padding: EdgeInsets.only(left: 4),
             child: Text(
               "Atur dan selesaikan tugasmu hari ini",
               style: TextStyle(color: Colors.white70),
@@ -203,33 +196,45 @@ class _DailyHomePageState extends State<DailyHomePage> {
     );
   }
 
-  Widget _sect(String t) => Padding(
-    padding: const EdgeInsets.only(top: 12, bottom: 8),
-    child: Text(
-      t,
-      style: const TextStyle(
-        fontSize: 17,
-        fontWeight: FontWeight.w700,
-        color: Colors.black87,
-      ),
-    ),
-  );
+  // [UI FIX] Judul Section Dinamis
+  Widget _sect(String t, bool isDark) => Padding(
+        padding: const EdgeInsets.only(top: 12, bottom: 8),
+        child: Text(
+          t,
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            // [UI FIX] Warna Teks Judul Section
+            color: isDark ? Colors.orangeAccent : Colors.black87,
+          ),
+        ),
+      );
 
-  Widget _card(HabitModel h) {
+  // [UI FIX] Kartu Habit Dinamis
+  Widget _card(HabitModel h, bool isDark) {
     final color = [Colors.green, Colors.orange, Colors.red][h.priority];
+
+    // Tentukan warna background kartu
+    final cardBg = isDark ? Theme.of(context).cardColor : Colors.white;
+    final textColor = isDark ? Colors.white : Colors.black87;
+
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 7),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.white, Colors.orange.withOpacity(0.05)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: cardBg,
+        // Gradasi hanya saat Light Mode, Dark Mode pakai warna solid agar bersih
+        gradient: isDark
+            ? null
+            : LinearGradient(
+                colors: [Colors.white, Colors.orange.withOpacity(0.05)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
         borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
-            color: Colors.orange.withOpacity(0.15),
+            color: isDark ? Colors.black26 : Colors.orange.withOpacity(0.15),
             blurRadius: 12,
             offset: const Offset(0, 5),
           ),
@@ -270,7 +275,8 @@ class _DailyHomePageState extends State<DailyHomePage> {
                     fontSize: 17,
                     fontWeight: FontWeight.bold,
                     decoration: h.isDone ? TextDecoration.lineThrough : null,
-                    color: h.isDone ? Colors.grey : Colors.black87,
+                    decorationColor: textColor,
+                    color: h.isDone ? Colors.grey : textColor,
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -283,7 +289,9 @@ class _DailyHomePageState extends State<DailyHomePage> {
                   h.note,
                   style: TextStyle(
                     fontSize: 14,
-                    color: h.isDone ? Colors.grey : Colors.black87,
+                    color: h.isDone
+                        ? Colors.grey
+                        : (isDark ? Colors.white70 : Colors.black87),
                   ),
                 ),
               ],
@@ -294,7 +302,7 @@ class _DailyHomePageState extends State<DailyHomePage> {
               IconButton(
                 onPressed: () => Navigator.pushNamed(
                   context,
-                  '/edit-habit', // Sesuaikan dengan AppRoutes
+                  '/edit-habit',
                   arguments: h,
                 ),
                 icon: const Icon(Icons.edit, color: Colors.orange),

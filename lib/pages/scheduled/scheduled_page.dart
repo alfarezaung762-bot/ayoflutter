@@ -23,9 +23,14 @@ class _ScheduledPageState extends State<ScheduledPage> {
 
   @override
   Widget build(BuildContext context) {
+    // [UI FIX] Deteksi Mode Gelap
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       key: scaffoldKey,
-      backgroundColor: const Color(0xFFF7F7F7),
+      // [UI FIX] Background dinamis
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+
       drawer: const SideMenuDrawer(),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
@@ -35,10 +40,10 @@ class _ScheduledPageState extends State<ScheduledPage> {
           );
         },
         backgroundColor: Colors.orange,
-        icon: const Icon(Icons.add),
+        icon: const Icon(Icons.add, color: Colors.white),
         label: const Text(
           "Jadwal Baru",
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
       ),
       body: SafeArea(
@@ -52,7 +57,8 @@ class _ScheduledPageState extends State<ScheduledPage> {
               margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: Colors.white,
+                // [UI FIX] Warna container daftar
+                color: isDark ? Theme.of(context).cardColor : Colors.white,
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
@@ -62,12 +68,13 @@ class _ScheduledPageState extends State<ScheduledPage> {
                   )
                 ],
               ),
-              child: const Text(
+              child: Text(
                 "Daftar Semua Jadwal",
                 style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black87),
+                    // [UI FIX] Warna teks header info
+                    color: isDark ? Colors.white : Colors.black87),
               ),
             ),
 
@@ -76,10 +83,7 @@ class _ScheduledPageState extends State<ScheduledPage> {
               child: ValueListenableBuilder(
                 valueListenable: box.listenable(),
                 builder: (context, box, _) {
-                  // 1. Ambil semua data
                   final tasks = box.values.toList();
-
-                  // 2. Urutkan berdasarkan tanggal terdekat (Ascending)
                   tasks.sort((a, b) => a.date.compareTo(b.date));
 
                   if (tasks.isEmpty) {
@@ -111,7 +115,8 @@ class _ScheduledPageState extends State<ScheduledPage> {
                     itemCount: tasks.length,
                     itemBuilder: (context, index) {
                       final task = tasks[index];
-                      return _taskCard(task);
+                      // Kirim isDark ke fungsi kartu
+                      return _taskCard(task, isDark);
                     },
                   );
                 },
@@ -166,29 +171,30 @@ class _ScheduledPageState extends State<ScheduledPage> {
     );
   }
 
-  // --- WIDGET CARD MODERN ---
-  Widget _taskCard(ScheduledHabitModel h) {
-    final priorityColor = [
-      Colors.green, // 0
-      Colors.orange, // 1
-      Colors.red // 2
-    ][h.priority];
+  // --- WIDGET CARD MODERN (Dark Mode Ready) ---
+  Widget _taskCard(ScheduledHabitModel h, bool isDark) {
+    final priorityColor = [Colors.green, Colors.orange, Colors.red][h.priority];
 
     final priorityText = ["Rendah", "Sedang", "Tinggi"][h.priority];
+
+    // [UI FIX] Warna Teks & Background Kartu
+    final cardBg = isDark ? Theme.of(context).cardColor : Colors.white;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final noteBg = isDark ? Colors.black26 : const Color(0xFFF5F7FA);
+    final noteText = isDark ? Colors.white70 : Colors.grey.shade700;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBg, // Background Kartu
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
         ],
-        // Garis warna di kiri
         border: Border(
           left: BorderSide(
             color: h.isDone ? Colors.grey : priorityColor,
@@ -212,7 +218,8 @@ class _ScheduledPageState extends State<ScheduledPage> {
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       decoration: h.isDone ? TextDecoration.lineThrough : null,
-                      color: h.isDone ? Colors.grey : Colors.black87,
+                      decorationColor: textColor,
+                      color: h.isDone ? Colors.grey : textColor, // Warna Judul
                     ),
                   ),
                 ),
@@ -280,22 +287,22 @@ class _ScheduledPageState extends State<ScheduledPage> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF5F7FA),
+                  color: noteBg, // Background Catatan
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   h.note,
-                  style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+                  style: TextStyle(
+                      fontSize: 13, color: noteText), // Warna Teks Catatan
                 ),
               ),
             ],
 
-            // Baris 4: Edit & Hapus (SUDAH ADA DISINI)
+            // Baris 4: Edit & Hapus
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                // TOMBOL EDIT
                 InkWell(
                   onTap: () {
                     Navigator.pushNamed(context, '/edit-scheduled',
@@ -312,10 +319,7 @@ class _ScheduledPageState extends State<ScheduledPage> {
                     ),
                   ),
                 ),
-
                 const SizedBox(width: 12),
-
-                // TOMBOL HAPUS
                 InkWell(
                   onTap: () => h.delete(),
                   child: const Padding(

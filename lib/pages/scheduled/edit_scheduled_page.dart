@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:alarm/alarm.dart'; // Import Alarm
+import 'package:alarm/alarm.dart';
 import '../../models/scheduled_habit_model.dart';
 
 class EditScheduledPage extends StatefulWidget {
@@ -18,12 +18,13 @@ class _EditScheduledPageState extends State<EditScheduledPage> {
   final dateC = TextEditingController();
 
   DateTime? selectedDate;
-  TimeOfDay? selectedTime; // Tambahan untuk alarm
+  TimeOfDay? selectedTime;
   String priority = "SEDANG";
 
   @override
   void initState() {
     super.initState();
+    // Isi data lama
     titleC.text = widget.habit.title;
     noteC.text = widget.habit.note;
     timeC.text = widget.habit.time;
@@ -32,7 +33,6 @@ class _EditScheduledPageState extends State<EditScheduledPage> {
     dateC.text =
         "${selectedDate!.day.toString().padLeft(2, '0')}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.year}";
 
-    // Parsing jam dari string "HH:mm" ke TimeOfDay agar bisa diedit alarmnya
     try {
       final parts = widget.habit.time.split(':');
       selectedTime =
@@ -63,7 +63,7 @@ class _EditScheduledPageState extends State<EditScheduledPage> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: Color(0xFFFFA726), // Orange
+              primary: Color(0xFFFFA726),
               onPrimary: Colors.white,
               onSurface: Colors.black,
             ),
@@ -90,7 +90,7 @@ class _EditScheduledPageState extends State<EditScheduledPage> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: Color(0xFFFFA726), // Orange
+              primary: Color(0xFFFFA726),
               onPrimary: Colors.white,
               onSurface: Colors.black,
             ),
@@ -110,27 +110,62 @@ class _EditScheduledPageState extends State<EditScheduledPage> {
     }
   }
 
+  // [UI FIX] Helper Input Style
+  InputDecoration _inputDecor(String hint, bool isDark) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(color: Colors.grey),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: isDark ? Colors.white54 : Colors.grey),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFFFA726)),
+      ),
+      suffixIconColor: const Color(0xFFFFA726),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    // [UI FIX] Deteksi Mode
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.black;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      // [UI FIX] Background
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+
       appBar: AppBar(
         title: const Text("Edit Jadwal",
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         backgroundColor: const Color(0xFFFFA726),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
+
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text("Judul Tugas",
-              style: TextStyle(fontWeight: FontWeight.bold)),
+          Text("Judul Tugas",
+              style: TextStyle(fontWeight: FontWeight.bold, color: textColor)),
           const SizedBox(height: 8),
-          TextField(controller: titleC),
+          TextField(
+            controller: titleC,
+            style: TextStyle(color: textColor),
+            decoration: _inputDecor("Judul", isDark),
+          ),
           const SizedBox(height: 16),
-          const Text("Catatan", style: TextStyle(fontWeight: FontWeight.bold)),
+          Text("Catatan",
+              style: TextStyle(fontWeight: FontWeight.bold, color: textColor)),
           const SizedBox(height: 8),
-          TextField(controller: noteC, maxLines: 2),
+          TextField(
+            controller: noteC,
+            maxLines: 2,
+            style: TextStyle(color: textColor),
+            decoration: _inputDecor("Catatan", isDark),
+          ),
           const SizedBox(height: 16),
           Row(
             children: [
@@ -138,16 +173,17 @@ class _EditScheduledPageState extends State<EditScheduledPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("Tanggal",
-                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    Text("Tanggal",
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, color: textColor)),
                     const SizedBox(height: 8),
                     TextField(
                       controller: dateC,
                       readOnly: true,
                       onTap: pickDate,
-                      decoration: const InputDecoration(
-                          suffixIcon: Icon(Icons.calendar_today,
-                              color: Color(0xFFFFA726))),
+                      style: TextStyle(color: textColor),
+                      decoration: _inputDecor("", isDark).copyWith(
+                          suffixIcon: const Icon(Icons.calendar_today)),
                     ),
                   ],
                 ),
@@ -157,16 +193,17 @@ class _EditScheduledPageState extends State<EditScheduledPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("Jam",
-                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    Text("Jam",
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, color: textColor)),
                     const SizedBox(height: 8),
                     TextField(
                       controller: timeC,
                       readOnly: true,
                       onTap: pickTime,
-                      decoration: const InputDecoration(
-                          suffixIcon: Icon(Icons.access_time,
-                              color: Color(0xFFFFA726))),
+                      style: TextStyle(color: textColor),
+                      decoration: _inputDecor("", isDark)
+                          .copyWith(suffixIcon: const Icon(Icons.access_time)),
                     ),
                   ],
                 ),
@@ -174,10 +211,13 @@ class _EditScheduledPageState extends State<EditScheduledPage> {
             ],
           ),
           const SizedBox(height: 16),
-          const Text("Prioritas",
-              style: TextStyle(fontWeight: FontWeight.bold)),
+          Text("Prioritas",
+              style: TextStyle(fontWeight: FontWeight.bold, color: textColor)),
           DropdownButtonFormField(
             value: priority,
+            dropdownColor: isDark ? const Color(0xFF2C2C3E) : Colors.white,
+            style: TextStyle(color: textColor),
+            decoration: _inputDecor("", isDark),
             items: ["RENDAH", "SEDANG", "TINGGI"]
                 .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                 .toList(),
@@ -195,7 +235,7 @@ class _EditScheduledPageState extends State<EditScheduledPage> {
               }
 
               try {
-                // 1. UPDATE DATA DATABASE
+                // 1. UPDATE DATABASE
                 widget.habit.title = titleC.text;
                 widget.habit.note = noteC.text;
                 widget.habit.date = selectedDate!;
@@ -208,11 +248,15 @@ class _EditScheduledPageState extends State<EditScheduledPage> {
 
                 await widget.habit.save();
 
-                // 2. UPDATE ALARM (Opsional: Kita anggap ID alarm = key dari HiveObject)
-                // Sebenarnya best practice-nya simpan ID alarm di database juga.
-                // Tapi untuk simpelnya, kita buat Alarm BARU saja.
+                // 2. UPDATE ALARM (PENTING!)
+                // Kita gunakan key dari Hive object sebagai ID Alarm agar konsisten
+                // (Asumsi key adalah int, jika bukan cast ke int yang aman)
+                final alarmId = widget.habit.key as int;
 
-                final alarmId = DateTime.now().millisecondsSinceEpoch % 10000;
+                // Stop alarm lama dulu biar bersih
+                await Alarm.stop(alarmId);
+
+                // Set Alarm Baru
                 final dateTimeAlarm = DateTime(
                     selectedDate!.year,
                     selectedDate!.month,
@@ -229,6 +273,10 @@ class _EditScheduledPageState extends State<EditScheduledPage> {
                     vibrate: true,
                     androidFullScreenIntent: true,
                     androidStopAlarmOnTermination: false,
+
+                    // [PENTING] Payload agar navigasi benar
+                    payload: 'scheduled',
+
                     volumeSettings: VolumeSettings.fixed(
                       volume: 1.0,
                       volumeEnforced: true,
@@ -243,6 +291,7 @@ class _EditScheduledPageState extends State<EditScheduledPage> {
                     ),
                   );
                   await Alarm.set(alarmSettings: alarmSettings);
+                  print("Alarm Updated ID: $alarmId");
                 }
 
                 if (context.mounted) Navigator.pop(context);
