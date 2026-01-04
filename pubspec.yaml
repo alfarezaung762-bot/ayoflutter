@@ -1,4 +1,4 @@
-name: ayo
+name: TrueHabit
 description: "A new Flutter project."
 publish_to: 'none'
 
@@ -10,20 +10,24 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  url_launcher: ^6.3.0
+  
+  # --- UI & UTILS ---
   cupertino_icons: ^1.0.8
-
+  url_launcher: ^6.3.0
+  intl: ^0.19.0
+  
+  # --- MEDIA ---
   youtube_player_flutter: ^9.0.1
+  
+  # --- PERMISSIONS ---
   permission_handler: ^11.3.0
-  # HIVE (Database Lokal)
+
+  # --- DATABASE (Hive) ---
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   path_provider: ^2.1.5
-  
-  # FORMAT TANGGAL & WAKTU
-  intl: ^0.19.0
 
-  # ALARM
+  # --- ALARM ---
   alarm: ^5.1.5
 
 dev_dependencies:
@@ -31,11 +35,36 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^5.0.0
 
-  # CODE GENERATOR
+  # --- CODE GENERATOR ---
   hive_generator: ^2.0.1
   build_runner: ^2.4.13
+  
+  # --- SPLASH SCREEN GENERATOR ---
+  flutter_native_splash: ^2.3.8
+
+  # --- APP ICON GENERATOR (BARU) ---
+  flutter_launcher_icons: ^0.13.1
+
+# === KONFIGURASI SPLASH SCREEN ===
+flutter_native_splash:
+  color: "#FFFFFF"
+  image: assets/images/app_logo.png
+  android_12:
+    image: assets/images/app_logo.png
+    icon_background_color: "#FFFFFF"
+
+# === KONFIGURASI APP ICON (BARU) ===
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  # GANTI 'icon_baru.png' DENGAN NAMA FILE KAMU YANG SEBENARNYA
+  image_path: "assets/images/icon_baru.png" 
+  min_sdk_android: 21
 
 flutter:
   uses-material-design: true
+  
+  # Daftar Aset
   assets:
     - assets/alarm.mp3
+    - assets/images/
