@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import '../../models/habit_model.dart';
-import 'package:alarm/alarm.dart'; // Pastikan import ini ada
+import 'package:alarm/alarm.dart';
 
 class CreateHabitPage extends StatefulWidget {
   const CreateHabitPage({super.key});
@@ -17,237 +17,249 @@ class _CreateHabitPageState extends State<CreateHabitPage> {
 
   String priority = "SEDANG";
 
-  // -----------------------------
-  // Fungsi open Time Picker
-  // -----------------------------
   Future<void> pickTime() async {
     TimeOfDay? picked = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.now(),
+      builder: (context, child) {
+        // Tema Picker agar tetap terang dan terbaca
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFFFFA726),
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
 
     if (picked != null) {
       final formatted =
           "${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}";
-
       setState(() {
         timeC.text = formatted;
       });
     }
   }
 
+  // [HELPER UI] Input Style Dinamis
+  InputDecoration _inputDecor(String hint, bool isDark) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(color: Colors.grey),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        // Garis putih di dark mode, abu di light mode
+        borderSide: BorderSide(color: isDark ? Colors.white54 : Colors.grey),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFFFA726)),
+      ),
+      suffixIconColor: const Color(0xFFFFA726),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final box = Hive.box<HabitModel>('habits');
 
+    // [UI FIX] Deteksi Mode
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.black;
+
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            // ========= HEADER =========
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              decoration: const BoxDecoration(color: Color(0xFFFFA726)),
-              child: const Center(
-                child: Text(
-                  "BUAT TUGAS",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-                ),
-              ),
-            ),
+      // [UI FIX] Background mengikuti tema
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
 
-            const SizedBox(height: 16),
+      appBar: AppBar(
+        title: const Text("Buat Tugas Harian",
+            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        backgroundColor: const Color(0xFFFFA726),
+        iconTheme: const IconThemeData(color: Colors.white),
+        elevation: 0,
+      ),
 
-            const Text("Tugas", style: TextStyle(fontWeight: FontWeight.bold)),
-            TextField(controller: titleC),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          // Header "BUAT TUGAS" dihapus karena sudah ada di AppBar
+          // Agar tampilan lebih bersih
 
-            const SizedBox(height: 16),
+          Text("Tugas",
+              style: TextStyle(fontWeight: FontWeight.bold, color: textColor)),
+          const SizedBox(height: 8),
+          TextField(
+            controller: titleC,
+            style: TextStyle(color: textColor), // Warna teks input
+            decoration: _inputDecor("Nama tugas", isDark),
+          ),
 
-            const Text(
-              "Catatan",
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            TextField(controller: noteC, maxLines: 3),
+          const SizedBox(height: 16),
 
-            const SizedBox(height: 16),
+          Text("Catatan",
+              style: TextStyle(fontWeight: FontWeight.bold, color: textColor)),
+          const SizedBox(height: 8),
+          TextField(
+            controller: noteC,
+            maxLines: 3,
+            style: TextStyle(color: textColor),
+            decoration: _inputDecor("Catatan tambahan", isDark),
+          ),
 
-            Row(
-              children: [
-                // =======================
-                // FIELD WAKTU (TimePicker)
-                // =======================
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "Waktu",
-                        style: TextStyle(fontWeight: FontWeight.bold),
+          const SizedBox(height: 16),
+
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("Waktu",
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, color: textColor)),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: timeC,
+                      readOnly: true,
+                      onTap: pickTime,
+                      style: TextStyle(color: textColor),
+                      decoration: _inputDecor("Pilih Jam", isDark).copyWith(
+                        suffixIcon: const Icon(Icons.access_time),
                       ),
-                      TextField(
-                        controller: timeC,
-                        readOnly: true,
-                        onTap: pickTime,
-                        decoration: const InputDecoration(
-                          suffixIcon: Icon(Icons.access_time),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(width: 16),
-
-                // PRIORITAS
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "Prioritas",
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      DropdownButtonFormField(
-                        value: priority,
-                        items: ["RENDAH", "SEDANG", "TINGGI"]
-                            .map(
-                              (e) => DropdownMenuItem(value: e, child: Text(e)),
-                            )
-                            .toList(),
-                        onChanged: (v) => setState(() => priority = v!),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 32),
-
-            // ====== BUTTON BUAT TUGAS ======
-            ElevatedButton(
-              onPressed: () async {
-                // [VALIDASI] Cek apakah Judul atau Waktu masih kosong?
-                if (titleC.text.isEmpty || timeC.text.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("Harap isi Judul dan Waktu tugas!"),
-                      backgroundColor: Colors.red,
                     ),
-                  );
-                  return; // Stop di sini, jangan lanjut ke bawah
-                }
-
-                // ===============================
-                // 1. AMBIL WAKTU DARI TEXT FIELD
-                // ===============================
-                final now = DateTime.now();
-                final timeParts = timeC.text.split(':');
-                final hour = int.parse(timeParts[0]);
-                final minute = int.parse(timeParts[1]);
-
-                // ===============================
-                // 2. BUAT DATETIME ALARM
-                // ===============================
-                var selectedDateTime = DateTime(
-                  now.year,
-                  now.month,
-                  now.day,
-                  hour,
-                  minute,
-                );
-
-                // ===============================
-                // 3. JIKA WAKTU SUDAH LEWAT → BESOK
-                // ===============================
-                if (selectedDateTime.isBefore(now)) {
-                  selectedDateTime =
-                      selectedDateTime.add(const Duration(days: 1));
-                }
-
-                // ===============================
-                // 4. ID UNIK ALARM
-                // ===============================
-                final alarmId = DateTime.now().millisecondsSinceEpoch % 10000;
-
-                // ===============================
-                // 5. KONFIGURASI ALARM (DAILY)
-                // ===============================
-
-                // Catatan: Sesuai dokumentasi alarm 5.1.5, kita gunakan 'payload'
-                final alarmSettings = AlarmSettings(
-                  id: alarmId,
-                  dateTime: selectedDateTime,
-                  assetAudioPath:
-                      'assets/alarm.mp3', // Pastikan file ini ada di assets
-                  loopAudio: true,
-                  vibrate: true,
-                  androidFullScreenIntent: true,
-                  androidStopAlarmOnTermination: false,
-
-                  // [PERBAIKAN] Menggunakan 'payload' sesuai dokumentasi v5.1.5
-                  payload: 'daily',
-
-                  // Volume Settings
-                  // Jika .fixed tidak dikenali, gunakan VolumeSettings(volume: null, fadeDuration: null, volumeEnforced: true)
-                  volumeSettings: VolumeSettings.fixed(
-                    volume: null,
-                    volumeEnforced: true,
-                  ),
-
-                  notificationSettings: NotificationSettings(
-                    title: titleC.text,
-                    body: noteC.text.isEmpty
-                        ? "Waktunya mengerjakan tugas!"
-                        : noteC.text,
-                    stopButton: 'Tunda / Kerjakan',
-                    icon: 'notification_icon',
-                  ),
-                );
-
-                // ===============================
-                // 6. SET ALARM
-                // ===============================
-                await Alarm.set(alarmSettings: alarmSettings);
-
-                // ===============================
-                // 7. SIMPAN KE HIVE
-                // ===============================
-                box.add(
-                  HabitModel(
-                    title: titleC.text,
-                    note: noteC.text,
-                    time: timeC.text,
-                    priority: priority == "RENDAH"
-                        ? 0
-                        : priority == "SEDANG"
-                            ? 1
-                            : 2,
-                  ),
-                );
-
-                if (mounted) Navigator.pop(context);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFFA726),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
+                  ],
                 ),
-                padding: const EdgeInsets.symmetric(vertical: 14),
               ),
-              child: const Text(
-                "BUAT TUGAS",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: Colors.white,
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("Prioritas",
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, color: textColor)),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField(
+                      value: priority,
+                      // [UI FIX] Dropdown menu warna
+                      dropdownColor:
+                          isDark ? const Color(0xFF2C2C3E) : Colors.white,
+                      style: TextStyle(color: textColor),
+                      decoration: _inputDecor("", isDark),
+                      items: ["RENDAH", "SEDANG", "TINGGI"]
+                          .map(
+                              (e) => DropdownMenuItem(value: e, child: Text(e)))
+                          .toList(),
+                      onChanged: (v) => setState(() => priority = v!),
+                    ),
+                  ],
                 ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 32),
+
+          ElevatedButton(
+            onPressed: () async {
+              if (titleC.text.isEmpty || timeC.text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Harap isi Judul dan Waktu tugas!"),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                return;
+              }
+
+              // LOGIKA ALARM (SAMA SEPERTI KODEMU)
+              final now = DateTime.now();
+              final timeParts = timeC.text.split(':');
+              final hour = int.parse(timeParts[0]);
+              final minute = int.parse(timeParts[1]);
+
+              var selectedDateTime = DateTime(
+                now.year,
+                now.month,
+                now.day,
+                hour,
+                minute,
+              );
+
+              if (selectedDateTime.isBefore(now)) {
+                selectedDateTime =
+                    selectedDateTime.add(const Duration(days: 1));
+              }
+
+              // ID Unik (Offset + 5000 agar beda dari Scheduled)
+              final alarmId =
+                  (DateTime.now().millisecondsSinceEpoch % 1000000) + 5000;
+
+              final alarmSettings = AlarmSettings(
+                id: alarmId,
+                dateTime: selectedDateTime,
+                assetAudioPath: 'assets/alarm.mp3',
+                loopAudio: true,
+                vibrate: true,
+                androidFullScreenIntent: true,
+                androidStopAlarmOnTermination: false,
+
+                payload: 'daily', // Navigasi Benar
+
+                volumeSettings: VolumeSettings.fixed(
+                  volume: null,
+                  volumeEnforced: true,
+                ),
+                notificationSettings: NotificationSettings(
+                  title: titleC.text,
+                  body: noteC.text.isEmpty
+                      ? "Waktunya mengerjakan tugas!"
+                      : noteC.text,
+                  stopButton: 'Tunda / Kerjakan',
+                  icon: 'notification_icon',
+                ),
+              );
+
+              await Alarm.set(alarmSettings: alarmSettings);
+              print("Alarm Daily berhasil diset ID: $alarmId");
+
+              box.add(
+                HabitModel(
+                  title: titleC.text,
+                  note: noteC.text,
+                  time: timeC.text,
+                  priority: priority == "RENDAH"
+                      ? 0
+                      : priority == "SEDANG"
+                          ? 1
+                          : 2,
+                ),
+              );
+
+              if (mounted) Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFFA726),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+            child: const Text(
+              "BUAT TUGAS",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: Colors.white,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
-import 'package:alarm/alarm.dart'; // Import Alarm
+import 'package:alarm/alarm.dart';
 import '../../models/scheduled_habit_model.dart';
 
 class CreateScheduledPage extends StatefulWidget {
@@ -16,12 +16,10 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
   final timeC = TextEditingController();
   final dateC = TextEditingController();
 
-  DateTime? selectedDate; // Tanggal yang dipilih (Jamnya 00:00)
-  TimeOfDay? selectedTime; // Jam yang dipilih
+  DateTime? selectedDate;
+  TimeOfDay? selectedTime;
   String priority = "SEDANG";
 
-  // --- FUNGSI PEMBERSIH TANGGAL ---
-  // Memastikan jam, menit, detik jadi 0 agar bersih
   DateTime _normalizeDate(DateTime date) {
     return DateTime(date.year, date.month, date.day);
   }
@@ -36,7 +34,7 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: Color(0xFFFFA726), // Orange
+              primary: Color(0xFFFFA726),
               onPrimary: Colors.white,
               onSurface: Colors.black,
             ),
@@ -63,7 +61,7 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: Color(0xFFFFA726), // Orange
+              primary: Color(0xFFFFA726),
               onPrimary: Colors.white,
               onSurface: Colors.black,
             ),
@@ -83,12 +81,31 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
     }
   }
 
+  InputDecoration _inputDecor(String hint, bool isDark) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(color: Colors.grey),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: isDark ? Colors.white54 : Colors.grey),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFFFA726)),
+      ),
+      suffixIconColor: const Color(0xFFFFA726),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final box = Hive.box<ScheduledHabitModel>('scheduled_box');
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.black;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text("Buat Jadwal Baru",
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -99,61 +116,44 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text("Judul Tugas",
-              style: TextStyle(fontWeight: FontWeight.bold)),
+          Text("Judul Tugas",
+              style: TextStyle(fontWeight: FontWeight.bold, color: textColor)),
           const SizedBox(height: 8),
           TextField(
             controller: titleC,
-            decoration: InputDecoration(
-              hintText: "Contoh: Meeting Zoom",
-              border:
-                  OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFFFA726)),
-              ),
-            ),
+            style: TextStyle(color: textColor),
+            decoration: _inputDecor("Contoh: Meeting Zoom", isDark),
           ),
           const SizedBox(height: 20),
 
-          const Text("Catatan", style: TextStyle(fontWeight: FontWeight.bold)),
+          Text("Catatan",
+              style: TextStyle(fontWeight: FontWeight.bold, color: textColor)),
           const SizedBox(height: 8),
           TextField(
             controller: noteC,
             maxLines: 2,
-            decoration: InputDecoration(
-              hintText: "Detail tugas...",
-              border:
-                  OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFFFA726)),
-              ),
-            ),
+            style: TextStyle(color: textColor),
+            decoration: _inputDecor("Detail tugas...", isDark),
           ),
           const SizedBox(height: 20),
 
-          // TANGGAL & JAM
           Row(
             children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("Tanggal",
-                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    Text("Tanggal",
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, color: textColor)),
                     const SizedBox(height: 8),
                     TextField(
                       controller: dateC,
                       readOnly: true,
                       onTap: pickDate,
-                      decoration: const InputDecoration(
-                          hintText: "Pilih Tgl",
-                          border: OutlineInputBorder(
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(12))),
-                          suffixIcon: Icon(Icons.calendar_today,
-                              color: Color(0xFFFFA726))),
+                      style: TextStyle(color: textColor),
+                      decoration: _inputDecor("Pilih Tgl", isDark).copyWith(
+                          suffixIcon: const Icon(Icons.calendar_today)),
                     ),
                   ],
                 ),
@@ -163,20 +163,17 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("Jam",
-                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    Text("Jam",
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, color: textColor)),
                     const SizedBox(height: 8),
                     TextField(
                       controller: timeC,
                       readOnly: true,
                       onTap: pickTime,
-                      decoration: const InputDecoration(
-                          hintText: "Pilih Jam",
-                          border: OutlineInputBorder(
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(12))),
-                          suffixIcon: Icon(Icons.access_time,
-                              color: Color(0xFFFFA726))),
+                      style: TextStyle(color: textColor),
+                      decoration: _inputDecor("Pilih Jam", isDark)
+                          .copyWith(suffixIcon: const Icon(Icons.access_time)),
                     ),
                   ],
                 ),
@@ -185,15 +182,14 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
           ),
           const SizedBox(height: 20),
 
-          const Text("Prioritas",
-              style: TextStyle(fontWeight: FontWeight.bold)),
+          Text("Prioritas",
+              style: TextStyle(fontWeight: FontWeight.bold, color: textColor)),
           const SizedBox(height: 8),
           DropdownButtonFormField(
             value: priority,
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(12))),
-            ),
+            dropdownColor: isDark ? const Color(0xFF2C2C3E) : Colors.white,
+            style: TextStyle(color: textColor),
+            decoration: _inputDecor("", isDark),
             items: ["RENDAH", "SEDANG", "TINGGI"]
                 .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                 .toList(),
@@ -202,10 +198,9 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
 
           const SizedBox(height: 40),
 
-          // TOMBOL SIMPAN
+          // TOMBOL SIMPAN (REVISI LOGIKA)
           ElevatedButton(
             onPressed: () async {
-              // 1. Validasi Input
               if (titleC.text.isEmpty ||
                   selectedDate == null ||
                   selectedTime == null) {
@@ -216,67 +211,8 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
               }
 
               try {
-                // 2. Gabungkan Tanggal & Jam Menjadi Satu Waktu Lengkap
-                final dateTimeAlarm = DateTime(
-                  selectedDate!.year,
-                  selectedDate!.month,
-                  selectedDate!.day,
-                  selectedTime!.hour,
-                  selectedTime!.minute,
-                  0, // Detik 0 agar pas
-                );
-
-                // DEBUG PRINT: Cek di console apakah waktunya benar
-                print("Mencoba set alarm untuk: $dateTimeAlarm");
-
-                // 3. Cek apakah waktu sudah lewat?
-                if (dateTimeAlarm.isBefore(DateTime.now())) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content:
-                          Text("Waktu sudah lewat! Pilih waktu masa depan."),
-                      backgroundColor: Colors.red));
-                  return;
-                }
-
-                // 4. Siapkan ID Unik untuk Alarm
-                // Menggunakan ID unik agar tidak bentrok dengan Daily Habit
-                final alarmId = DateTime.now().millisecondsSinceEpoch % 100000;
-
-                // 5. KONFIGURASI ALARM (SCHEDULED) - UPDATED
-                final alarmSettings = AlarmSettings(
-                  id: alarmId,
-                  dateTime: dateTimeAlarm,
-                  assetAudioPath: 'assets/alarm.mp3',
-                  loopAudio: true,
-                  vibrate: true,
-                  androidFullScreenIntent: true,
-                  androidStopAlarmOnTermination: false,
-
-                  // [TAMBAHAN BARU] Penanda bahwa ini adalah Scheduled Habit
-                  // Gunakan 'extraParameter' jika menggunakan package alarm v4+
-                  // Jika package Anda custom/versi lama yang pakai 'payload', ubah 'extraParameter' jadi 'payload'
-                  payload: 'scheduled',
-
-                  volumeSettings: VolumeSettings.fixed(
-                    volume: null,
-                    volumeEnforced: true,
-                  ),
-
-                  notificationSettings: NotificationSettings(
-                    title: "Jadwal: ${titleC.text}",
-                    body:
-                        noteC.text.isEmpty ? "Waktunya jadwalmu!" : noteC.text,
-                    stopButton: 'Selesai',
-                    icon: 'notification_icon',
-                  ),
-                );
-
-                // 6. Eksekusi Set Alarm
-                await Alarm.set(alarmSettings: alarmSettings);
-                print("Alarm berhasil diset ID: $alarmId");
-
-                // 7. Simpan ke Hive (Database Lokal)
-                await box.add(ScheduledHabitModel(
+                // 1. Simpan ke Hive TERLEBIH DAHULU agar dapat ID Unik (Key)
+                final newItem = ScheduledHabitModel(
                   title: titleC.text,
                   note: noteC.text,
                   date: selectedDate!,
@@ -286,18 +222,72 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
                       : priority == "SEDANG"
                           ? 1
                           : 2,
-                ));
+                );
+
+                // Simpan & Dapatkan ID dari Hive
+                final int idFromHive = await box.add(newItem);
+                print("Data tersimpan dengan ID Hive: $idFromHive");
+
+                // 2. Gunakan ID Hive sebagai ID Alarm (Dijamin Unik & Stabil)
+                // Kita konversi ke integer aman (jika key hive sangat besar/berbeda tipe)
+                // Tapi biasanya Hive key adalah auto-increment integer, jadi aman.
+                final alarmId = idFromHive;
+
+                // 3. Konfigurasi Alarm
+                final dateTimeAlarm = DateTime(
+                  selectedDate!.year,
+                  selectedDate!.month,
+                  selectedDate!.day,
+                  selectedTime!.hour,
+                  selectedTime!.minute,
+                  0,
+                );
+
+                if (dateTimeAlarm.isBefore(DateTime.now())) {
+                  // Jika waktu sudah lewat, alarm tidak diset, tapi data tersimpan
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content:
+                          Text("Tugas disimpan, tapi waktu alarm sudah lewat."),
+                      backgroundColor: Colors.orange));
+                  if (context.mounted) Navigator.pop(context);
+                  return;
+                }
+
+                final alarmSettings = AlarmSettings(
+                  id: alarmId, // Gunakan ID dari Hive!
+                  dateTime: dateTimeAlarm,
+                  assetAudioPath: 'assets/alarm.mp3',
+                  loopAudio: true,
+                  vibrate: true,
+                  androidFullScreenIntent: true,
+                  androidStopAlarmOnTermination: false,
+                  payload: 'scheduled',
+
+                  volumeSettings: VolumeSettings.fixed(
+                    volume: null,
+                    volumeEnforced: true,
+                  ),
+                  notificationSettings: NotificationSettings(
+                    title: "Jadwal: ${titleC.text}",
+                    body:
+                        noteC.text.isEmpty ? "Waktunya jadwalmu!" : noteC.text,
+                    stopButton: 'Selesai',
+                    icon: 'notification_icon',
+                  ),
+                );
+
+                await Alarm.set(alarmSettings: alarmSettings);
+                print("Alarm sukses diset dengan ID: $alarmId");
 
                 if (context.mounted) Navigator.pop(context);
               } catch (e) {
-                print("Error setting alarm: $e");
+                print("Error: $e");
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text("Gagal set alarm: $e"),
-                    backgroundColor: Colors.red));
+                    content: Text("Gagal: $e"), backgroundColor: Colors.red));
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFFA726), // Orange
+              backgroundColor: const Color(0xFFFFA726),
               padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(30)),
