@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:alarm/alarm.dart';
+// [WAJIB] Tambahkan import ini untuk menggantikan Alarm.getNotificationPermission
+import 'package:permission_handler/permission_handler.dart';
 import '../../models/scheduled_habit_model.dart';
 
 class CreateScheduledPage extends StatefulWidget {
@@ -20,6 +22,22 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
   TimeOfDay? selectedTime;
   String priority = "SEDANG";
 
+  @override
+  void initState() {
+    super.initState();
+    // Cek izin saat halaman dibuka
+    checkAndroidNotificationPermission();
+  }
+
+  // [PERBAIKAN] Menggunakan Permission Handler
+  Future<void> checkAndroidNotificationPermission() async {
+    final status = await Permission.notification.status;
+    if (status.isDenied) {
+      print("Meminta izin notifikasi...");
+      await Permission.notification.request();
+    }
+  }
+
   DateTime _normalizeDate(DateTime date) {
     return DateTime(date.year, date.month, date.day);
   }
@@ -31,7 +49,6 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
       firstDate: DateTime.now(),
       lastDate: DateTime(2030),
       builder: (context, child) {
-        // [UI FIX] Tema Picker
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
@@ -82,7 +99,6 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
     }
   }
 
-  // [UI FIX] Helper Input Style
   InputDecoration _inputDecor(String hint, bool isDark) {
     return InputDecoration(
       hintText: hint,
@@ -90,7 +106,6 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        // Border putih di dark mode
         borderSide: BorderSide(color: isDark ? Colors.white54 : Colors.grey),
       ),
       focusedBorder: OutlineInputBorder(
@@ -101,11 +116,10 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
     );
   }
 
-  // --- [FUNGSI BARU] POPUP SUKSES DI TENGAH ---
   void _showSuccessDialog(String message) {
     showDialog(
       context: context,
-      barrierDismissible: false, // User tidak bisa klik luar
+      barrierDismissible: false,
       builder: (ctx) {
         final isDark = Theme.of(context).brightness == Brightness.dark;
         return AlertDialog(
@@ -137,11 +151,10 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
       },
     );
 
-    // Timer: Tutup Dialog & Halaman setelah 1.5 detik
     Future.delayed(const Duration(milliseconds: 1500), () {
       if (mounted) {
-        Navigator.of(context).pop(); // Tutup Dialog
-        Navigator.of(context).pop(); // Kembali ke Halaman Sebelumnya
+        Navigator.of(context).pop();
+        Navigator.of(context).pop();
       }
     });
   }
@@ -149,15 +162,11 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
   @override
   Widget build(BuildContext context) {
     final box = Hive.box<ScheduledHabitModel>('scheduled_box');
-
-    // [UI FIX] Deteksi Mode
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : Colors.black;
 
     return Scaffold(
-      // [UI FIX] Background mengikuti tema
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-
       appBar: AppBar(
         title: const Text("Buat Jadwal Baru",
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -177,7 +186,6 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
             decoration: _inputDecor("Contoh: Meeting Zoom", isDark),
           ),
           const SizedBox(height: 20),
-
           Text("Catatan",
               style: TextStyle(fontWeight: FontWeight.bold, color: textColor)),
           const SizedBox(height: 8),
@@ -188,8 +196,6 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
             decoration: _inputDecor("Detail tugas...", isDark),
           ),
           const SizedBox(height: 20),
-
-          // TANGGAL & JAM
           Row(
             children: [
               Expanded(
@@ -234,13 +240,11 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
             ],
           ),
           const SizedBox(height: 20),
-
           Text("Prioritas",
               style: TextStyle(fontWeight: FontWeight.bold, color: textColor)),
           const SizedBox(height: 8),
           DropdownButtonFormField(
             value: priority,
-            // [UI FIX] Background dropdown
             dropdownColor: isDark ? const Color(0xFF2C2C3E) : Colors.white,
             style: TextStyle(color: textColor),
             decoration: _inputDecor("", isDark),
@@ -252,10 +256,9 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
 
           const SizedBox(height: 40),
 
-          // TOMBOL SIMPAN
+          // --- TOMBOL SIMPAN ---
           ElevatedButton(
             onPressed: () async {
-              // 1. VALIDASI
               if (titleC.text.isEmpty ||
                   selectedDate == null ||
                   selectedTime == null) {
@@ -265,8 +268,11 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
                 return;
               }
 
+              // Variabel untuk menyimpan ID sementara
+              int? idFromHive;
+
               try {
-                // 2. SIMPAN KE HIVE DULU (Agar dapat ID Unik)
+                // 1. Simpan ke Hive
                 final newItem = ScheduledHabitModel(
                   title: titleC.text,
                   note: noteC.text,
@@ -279,13 +285,10 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
                           : 2,
                 );
 
-                final int idFromHive = await box.add(newItem);
-                print("Data tersimpan dengan ID Hive: $idFromHive");
+                idFromHive = await box.add(newItem);
+                print("Data tersimpan di Hive ID: $idFromHive");
 
-                // 3. GUNAKAN ID HIVE SEBAGAI ID ALARM
-                final alarmId = idFromHive;
-
-                // 4. KONFIGURASI ALARM
+                // 2. Cek Waktu Alarm
                 final dateTimeAlarm = DateTime(
                   selectedDate!.year,
                   selectedDate!.month,
@@ -296,54 +299,54 @@ class _CreateScheduledPageState extends State<CreateScheduledPage> {
                 );
 
                 if (dateTimeAlarm.isBefore(DateTime.now())) {
-                  // Jika waktu lewat, tampilkan pesan error, tapi data tetap tersimpan
+                  // Rollback: Hapus data Hive jika waktu salah
+                  await box.delete(idFromHive);
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                       content:
-                          Text("Tugas disimpan, tapi waktu alarm sudah lewat."),
+                          Text("Waktu sudah lewat! Pilih waktu masa depan."),
                       backgroundColor: Colors.orange));
-                  if (context.mounted) Navigator.pop(context);
                   return;
                 }
 
+                // 3. Set Alarm
                 final alarmSettings = AlarmSettings(
-                  id: alarmId,
+                  id: idFromHive,
                   dateTime: dateTimeAlarm,
                   assetAudioPath: 'assets/alarm.mp3',
                   loopAudio: true,
                   vibrate: true,
                   androidFullScreenIntent: true,
                   androidStopAlarmOnTermination: false,
-
-                  // Payload Navigasi
                   payload: 'scheduled',
-
                   volumeSettings: VolumeSettings.fixed(
                     volume: null,
                     volumeEnforced: true,
                   ),
                   notificationSettings: NotificationSettings(
                     title: "Jadwal: ${titleC.text}",
-                    body:
-                        noteC.text.isEmpty ? "Waktunya jadwalmu!" : noteC.text,
-                    stopButton: 'Selesai',
+                    body: noteC.text.isEmpty
+                        ? "Ketuk untuk mematikan"
+                        : "${noteC.text}\n(Ketuk untuk mematikan)",
+                    stopButton: 'MATIKAN', // Saya biarkan sesuai request
                     icon: 'notification_icon',
                   ),
                 );
 
                 await Alarm.set(alarmSettings: alarmSettings);
-                print("Alarm sukses diset dengan ID: $alarmId");
 
-                // 5. [POPUP SUKSES]
                 if (mounted) {
-                  // Memanggil fungsi dialog baru
                   _showSuccessDialog(
                       "Jadwal '${titleC.text}'\nberhasil disimpan!");
                 }
-                // (Navigator.pop sudah dihandle di dalam _showSuccessDialog)
               } catch (e) {
-                print("Error: $e");
+                // Rollback
+                if (idFromHive != null) {
+                  await box.delete(idFromHive);
+                }
+                print("Error Alarm: $e");
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text("Gagal: $e"), backgroundColor: Colors.red));
+                    content: Text("Gagal menyimpan jadwal. Coba lagi."),
+                    backgroundColor: Colors.red));
               }
             },
             style: ElevatedButton.styleFrom(

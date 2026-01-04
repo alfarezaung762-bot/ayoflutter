@@ -21,16 +21,21 @@ class ChallengeModelAdapter extends TypeAdapter<ChallengeModel> {
       description: fields[1] as String,
       durationDays: fields[2] as int,
       colorCode: fields[3] as int,
+      dailyTasks: (fields[6] as List).cast<String>(),
       isJoined: fields[4] as bool,
       progressDay: fields[5] as int,
-      dailyTasks: (fields[6] as List).cast<String>(),
+      startDate: fields[7] as DateTime?,
+      lastUpdated: fields[8] as DateTime?,
+      todayTaskStatus: (fields[9] as List).cast<bool>(),
+      reminderTime: fields[10] as String?,
+      alarmId: fields[11] as int?,
     );
   }
 
   @override
   void write(BinaryWriter writer, ChallengeModel obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.title)
       ..writeByte(1)
@@ -44,7 +49,17 @@ class ChallengeModelAdapter extends TypeAdapter<ChallengeModel> {
       ..writeByte(5)
       ..write(obj.progressDay)
       ..writeByte(6)
-      ..write(obj.dailyTasks);
+      ..write(obj.dailyTasks)
+      ..writeByte(7)
+      ..write(obj.startDate)
+      ..writeByte(8)
+      ..write(obj.lastUpdated)
+      ..writeByte(9)
+      ..write(obj.todayTaskStatus)
+      ..writeByte(10)
+      ..write(obj.reminderTime)
+      ..writeByte(11)
+      ..write(obj.alarmId);
   }
 
   @override

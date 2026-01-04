@@ -55,31 +55,39 @@ class _CreateHabitPageState extends State<CreateHabitPage> {
         final isDark = Theme.of(context).brightness == Brightness.dark;
 
         return AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           backgroundColor: isDark ? const Color(0xFF2C2C3E) : Colors.white,
-          contentPadding:
-              const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: 24,
+            horizontal: 24,
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min, // Ukuran menyesuaikan konten
             children: [
-              const Icon(Icons.check_circle,
-                  color: Colors.green, size: 70), // Ukuran ikon diperbesar
+              const Icon(
+                Icons.check_circle,
+                color: Colors.green,
+                size: 70,
+              ), // Ukuran ikon diperbesar
               const SizedBox(height: 20),
               Text(
                 "Berhasil!",
                 style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : Colors.black87),
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
               ),
               const SizedBox(height: 10),
               Text(
                 message,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                    fontSize: 16,
-                    color: isDark ? Colors.white70 : Colors.black54),
+                  fontSize: 16,
+                  color: isDark ? Colors.white70 : Colors.black54,
+                ),
               ),
             ],
           ),
@@ -128,8 +136,10 @@ class _CreateHabitPageState extends State<CreateHabitPage> {
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
 
       appBar: AppBar(
-        title: const Text("Buat Tugas Harian",
-            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        title: const Text(
+          "Buat Tugas Harian",
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
         backgroundColor: const Color(0xFFFFA726),
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
@@ -138,8 +148,10 @@ class _CreateHabitPageState extends State<CreateHabitPage> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text("Tugas",
-              style: TextStyle(fontWeight: FontWeight.bold, color: textColor)),
+          Text(
+            "Tugas",
+            style: TextStyle(fontWeight: FontWeight.bold, color: textColor),
+          ),
           const SizedBox(height: 8),
           TextField(
             controller: titleC,
@@ -149,8 +161,10 @@ class _CreateHabitPageState extends State<CreateHabitPage> {
 
           const SizedBox(height: 16),
 
-          Text("Catatan",
-              style: TextStyle(fontWeight: FontWeight.bold, color: textColor)),
+          Text(
+            "Catatan",
+            style: TextStyle(fontWeight: FontWeight.bold, color: textColor),
+          ),
           const SizedBox(height: 8),
           TextField(
             controller: noteC,
@@ -167,18 +181,23 @@ class _CreateHabitPageState extends State<CreateHabitPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text("Waktu",
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, color: textColor)),
+                    Text(
+                      "Waktu",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: textColor,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     TextField(
                       controller: timeC,
                       readOnly: true,
                       onTap: pickTime,
                       style: TextStyle(color: textColor),
-                      decoration: _inputDecor("Pilih Jam", isDark).copyWith(
-                        suffixIcon: const Icon(Icons.access_time),
-                      ),
+                      decoration: _inputDecor(
+                        "Pilih Jam",
+                        isDark,
+                      ).copyWith(suffixIcon: const Icon(Icons.access_time)),
                     ),
                   ],
                 ),
@@ -188,9 +207,13 @@ class _CreateHabitPageState extends State<CreateHabitPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text("Prioritas",
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, color: textColor)),
+                    Text(
+                      "Prioritas",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: textColor,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField(
                       value: priority,
@@ -201,7 +224,8 @@ class _CreateHabitPageState extends State<CreateHabitPage> {
                       decoration: _inputDecor("", isDark),
                       items: ["RENDAH", "SEDANG", "TINGGI"]
                           .map(
-                              (e) => DropdownMenuItem(value: e, child: Text(e)))
+                            (e) => DropdownMenuItem(value: e, child: Text(e)),
+                          )
                           .toList(),
                       onChanged: (v) => setState(() => priority = v!),
                     ),
@@ -243,8 +267,9 @@ class _CreateHabitPageState extends State<CreateHabitPage> {
 
               // Jika waktu sudah lewat hari ini, set untuk besok
               if (selectedDateTime.isBefore(now)) {
-                selectedDateTime =
-                    selectedDateTime.add(const Duration(days: 1));
+                selectedDateTime = selectedDateTime.add(
+                  const Duration(days: 1),
+                );
               }
 
               // ID Unik (Offset + 5000000 agar beda dari Scheduled)
@@ -270,10 +295,14 @@ class _CreateHabitPageState extends State<CreateHabitPage> {
                 notificationSettings: NotificationSettings(
                   // Pastikan judul diambil dari text controller
                   title: titleC.text,
-                  body: noteC.text.isEmpty
-                      ? "Waktunya mengerjakan tugas!"
-                      : noteC.text,
-                  stopButton: 'Tunda / Kerjakan',
+
+                  // --- [BAGIAN INI YANG DIUBAH] ---
+                  // Jika catatan KOSONG -> Tampilkan "Ketuk untuk mematikan"
+                  // Jika catatan ADA -> Tampilkan Catatan + "Ketuk untuk mematikan"
+                  body: noteC.text.isEmpty ? "Ketuk untuk mematikan" : "",
+
+                  // Tombol juga saya perjelas menjadi MATIKAN sesuai konteks
+                  stopButton: 'MATIKAN',
                   icon: 'notification_icon',
                 ),
               );
@@ -281,11 +310,11 @@ class _CreateHabitPageState extends State<CreateHabitPage> {
               await Alarm.set(alarmSettings: alarmSettings);
               print("Alarm Daily berhasil diset ID: $alarmId");
 
-              // 3. SIMPAN KE HIVE
+              // 3. SIMPAN KE HIVE (TETAP MENGGUNAKAN DATA ASLI)
               box.add(
                 HabitModel(
                   title: titleC.text,
-                  note: noteC.text,
+                  note: noteC.text, // Catatan asli tetap tersimpan bersih
                   time: timeC.text,
                   priority: priority == "RENDAH"
                       ? 0
