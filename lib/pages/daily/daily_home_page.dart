@@ -5,6 +5,8 @@ import '../../models/habit_model.dart';
 import 'create_habit_page.dart';
 import 'edit_habit_page.dart';
 import '../../widgets/side_menu_drawer.dart';
+// [BARU] Import halaman App Blocker
+import '../app-block/block_page.dart';
 
 class DailyHomePage extends StatefulWidget {
   const DailyHomePage({super.key});
@@ -13,12 +15,18 @@ class DailyHomePage extends StatefulWidget {
   State<DailyHomePage> createState() => _DailyHomePageState();
 }
 
-class _DailyHomePageState extends State<DailyHomePage> {
+class _DailyHomePageState extends State<DailyHomePage>
+    with SingleTickerProviderStateMixin {
+  // [ANIMASI] Tambahkan Mixin
   late Box<HabitModel> box;
   Duration timeLeft = const Duration(hours: 24);
   Timer? _timer;
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  // [ANIMASI] Controller untuk efek kelap-kelip/denyut
+  late AnimationController _animController;
+  late Animation<double> _scaleAnimation;
 
   @override
   void initState() {
@@ -27,11 +35,22 @@ class _DailyHomePageState extends State<DailyHomePage> {
     _checkDailyReset();
     _updateTime();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => _updateTime());
+
+    // [ANIMASI] Setup animasi denyut
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1), // Kecepatan denyut
+    )..repeat(reverse: true); // Ulangi bolak-balik (besar-kecil)
+
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.2).animate(
+      CurvedAnimation(parent: _animController, curve: Curves.easeInOut),
+    );
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _animController.dispose(); // [ANIMASI] Wajib dispose controller
     super.dispose();
   }
 
@@ -74,11 +93,8 @@ class _DailyHomePageState extends State<DailyHomePage> {
 
     return Scaffold(
       key: _scaffoldKey,
-      // [UI FIX] Background mengikuti tema
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-
       drawer: const SideMenuDrawer(),
-
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => Navigator.push(
           context,
@@ -95,7 +111,7 @@ class _DailyHomePageState extends State<DailyHomePage> {
       body: SafeArea(
         child: Column(
           children: [
-            // Header
+            // Header (Dengan Tombol Animasi)
             _header(),
 
             // Timer Text
@@ -106,7 +122,6 @@ class _DailyHomePageState extends State<DailyHomePage> {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  // [UI FIX] Warna teks timer
                   color: isDark ? Colors.white70 : Colors.black54,
                 ),
               ),
@@ -149,7 +164,7 @@ class _DailyHomePageState extends State<DailyHomePage> {
     );
   }
 
-  // --- WIDGET HEADER BARU ---
+  // --- WIDGET HEADER DENGAN ANIMASI ---
   Widget _header() {
     return Container(
       width: double.infinity,
@@ -162,23 +177,75 @@ class _DailyHomePageState extends State<DailyHomePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              IconButton(
-                onPressed: () {
-                  _scaffoldKey.currentState?.openDrawer();
-                },
-                icon: const Icon(Icons.menu, color: Colors.white, size: 28),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                visualDensity: VisualDensity.compact,
+              // KIRI: Menu & Judul
+              Row(
+                children: [
+                  IconButton(
+                    onPressed: () {
+                      _scaffoldKey.currentState?.openDrawer();
+                    },
+                    icon: const Icon(Icons.menu, color: Colors.white, size: 28),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    "Daily Habit",
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              const Text(
-                "Daily Habit",
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+
+              // KANAN: Tombol App Blocker [DENGAN ANIMASI & TEXT LABEL]
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const BlockPage()),
+                  );
+                },
+                child: AnimatedBuilder(
+                  animation: _scaleAnimation,
+                  builder: (context, child) {
+                    return Transform.scale(
+                      scale: _scaleAnimation.value,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.5),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(Icons.shield_outlined,
+                                color: Colors.white, size: 20),
+                            SizedBox(width: 4),
+                            Text(
+                              "BLOCK",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ],
@@ -204,7 +271,6 @@ class _DailyHomePageState extends State<DailyHomePage> {
           style: TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.w700,
-            // [UI FIX] Warna Teks Judul Section
             color: isDark ? Colors.orangeAccent : Colors.black87,
           ),
         ),
@@ -214,7 +280,6 @@ class _DailyHomePageState extends State<DailyHomePage> {
   Widget _card(HabitModel h, bool isDark) {
     final color = [Colors.green, Colors.orange, Colors.red][h.priority];
 
-    // Tentukan warna background kartu
     final cardBg = isDark ? Theme.of(context).cardColor : Colors.white;
     final textColor = isDark ? Colors.white : Colors.black87;
 
@@ -223,7 +288,6 @@ class _DailyHomePageState extends State<DailyHomePage> {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: cardBg,
-        // Gradasi hanya saat Light Mode, Dark Mode pakai warna solid agar bersih
         gradient: isDark
             ? null
             : LinearGradient(
