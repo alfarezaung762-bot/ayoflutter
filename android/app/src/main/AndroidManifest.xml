@@ -15,7 +15,7 @@
     <uses-permission android:name="android.permission.INTERNET"/>
 
     <application
-        android:label="ayo"
+        android:label="TrueHabit"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon">
 

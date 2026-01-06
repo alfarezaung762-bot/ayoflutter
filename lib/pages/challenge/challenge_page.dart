@@ -58,7 +58,7 @@ class _ChallengePageState extends State<ChallengePage> {
         dailyTasks: ["Minum air", "Meditasi 5 menit", "Rapikan kasur"],
         isJoined: false,
         todayTaskStatus: [false, false, false],
-        reminderTime: "06:00", // Contoh jam default
+        reminderTime: "06:00",
       ));
       box.add(ChallengeModel(
         title: "Detox Sosmed",
@@ -72,20 +72,73 @@ class _ChallengePageState extends State<ChallengePage> {
         ],
         isJoined: false,
         todayTaskStatus: [false, false, false],
-        reminderTime: "21:00", // Contoh jam default
+        reminderTime: "21:00",
       ));
     }
   }
 
-  void _joinChallenge(ChallengeModel challenge) {
+  // --- LOGIKA JOIN & START ALARM (PERBAIKAN UTAMA) ---
+  Future<void> _joinChallenge(ChallengeModel challenge) async {
+    // 1. SET ALARM (Hanya jika ada reminderTime)
+    if (challenge.reminderTime != null && challenge.reminderTime!.isNotEmpty) {
+      try {
+        // Parse jam dari string "HH:mm"
+        final parts = challenge.reminderTime!.split(':');
+        final int hour = int.parse(parts[0]);
+        final int minute = int.parse(parts[1]);
+
+        final now = DateTime.now();
+        // Buat jadwal untuk hari ini dulu
+        DateTime scheduleTime =
+            DateTime(now.year, now.month, now.day, hour, minute);
+
+        // LOGIKA PINTAR: Jika jam sudah lewat hari ini, mulai alarm BESOK
+        if (scheduleTime.isBefore(now)) {
+          scheduleTime = scheduleTime.add(const Duration(days: 1));
+        }
+
+        // Pastikan punya ID Alarm (buat baru jika null)
+        final int alarmId =
+            challenge.alarmId ?? DateTime.now().millisecondsSinceEpoch % 100000;
+        challenge.alarmId =
+            alarmId; // Simpan ID ke model agar bisa dihapus nanti
+
+        // Setting Alarm
+        final alarmSettings = AlarmSettings(
+          id: alarmId,
+          dateTime: scheduleTime,
+          assetAudioPath: 'assets/alarm.mp3',
+          loopAudio: true,
+          vibrate: true,
+          volumeSettings:
+              VolumeSettings.fixed(volume: null, volumeEnforced: true),
+          notificationSettings: NotificationSettings(
+            title: "Challenge: ${challenge.title}",
+            body: "Waktunya mengerjakan tugas harianmu!",
+            stopButton: null,
+            icon: 'notification_icon',
+          ),
+          payload: 'challenge', // Payload agar sistem tahu ini alarm challenge
+        );
+
+        await Alarm.set(alarmSettings: alarmSettings);
+        debugPrint("Alarm Challenge dimulai untuk: $scheduleTime");
+      } catch (e) {
+        debugPrint("Gagal set alarm challenge: $e");
+      }
+    }
+
+    // 2. UPDATE STATUS JOIN DI DATABASE
     challenge.isJoined = true;
     challenge.startDate = DateTime.now();
     challenge.progressDay = 1;
     challenge.save();
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Berhasil bergabung: ${challenge.title}!")),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Berhasil bergabung: ${challenge.title}!")),
+      );
+    }
   }
 
   Future<void> _deleteChallenge(ChallengeModel challenge) async {
@@ -257,7 +310,7 @@ class _ChallengePageState extends State<ChallengePage> {
     );
   }
 
-  // --- KARTU AKTIF (BERWARNA) ---
+  // --- KARTU AKTIF ---
   Widget _activeChallengeCard(BuildContext context, ChallengeModel c) {
     int pastDays = (c.progressDay - 1).clamp(0, c.durationDays);
     int tasksDoneToday = c.todayTaskStatus.where((done) => done).length;
@@ -300,7 +353,6 @@ class _ChallengePageState extends State<ChallengePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Row Judul & Delete
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -330,12 +382,9 @@ class _ChallengePageState extends State<ChallengePage> {
                       ),
                     ],
                   ),
-
-                  // Info Progress & Jam
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // [BARU] Tampilkan Jam di Kartu Aktif
                       if (c.reminderTime != null)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 8.0),
@@ -354,7 +403,6 @@ class _ChallengePageState extends State<ChallengePage> {
                             ],
                           ),
                         ),
-
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -388,7 +436,7 @@ class _ChallengePageState extends State<ChallengePage> {
     );
   }
 
-  // --- KARTU REKOMENDASI (PUTIH) ---
+  // --- KARTU REKOMENDASI (FIX OVERFLOW) ---
   Widget _recommendationCard(
       BuildContext context, ChallengeModel c, bool isDark) {
     return Container(
@@ -420,6 +468,8 @@ class _ChallengePageState extends State<ChallengePage> {
                 color: Color(c.colorCode), size: 28),
           ),
           const SizedBox(width: 16),
+
+          // [FIX] Menggunakan Expanded + Wrap agar teks tidak overflow
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -432,27 +482,37 @@ class _ChallengePageState extends State<ChallengePage> {
                       color: isDark ? Colors.white : Colors.black87),
                 ),
                 const SizedBox(height: 4),
-                // [BARU] Tampilkan Jam di Kartu Rekomendasi
-                Row(
+                // Gunakan Wrap di sini
+                Wrap(
+                  spacing: 6, // Jarak horizontal
+                  runSpacing: 2, // Jarak vertikal jika turun baris
                   children: [
                     Text(
-                      "${c.durationDays} hari • ${c.dailyTasks.length} tugas",
+                      "${c.durationDays} hari",
                       style: TextStyle(
                           color: isDark ? Colors.white54 : Colors.grey,
                           fontSize: 12),
                     ),
-                    if (c.reminderTime != null) ...[
-                      const SizedBox(width: 6),
+                    Text(
+                      "• ${c.dailyTasks.length} tugas",
+                      style: TextStyle(
+                          color: isDark ? Colors.white54 : Colors.grey,
+                          fontSize: 12),
+                    ),
+                    if (c.reminderTime != null)
                       Text("• ⏰ ${c.reminderTime}",
                           style: TextStyle(
                               color: isDark ? Colors.white54 : Colors.grey,
                               fontSize: 12)),
-                    ]
                   ],
                 ),
               ],
             ),
           ),
+
+          const SizedBox(width: 8),
+
+          // Tombol Aksi
           Row(
             children: [
               IconButton(
@@ -462,7 +522,7 @@ class _ChallengePageState extends State<ChallengePage> {
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               ElevatedButton(
                 onPressed: () => _joinChallenge(c),
                 style: ElevatedButton.styleFrom(
@@ -471,13 +531,13 @@ class _ChallengePageState extends State<ChallengePage> {
                   foregroundColor: Colors.orange,
                   elevation: 0,
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
                 child: const Text("GABUNG",
                     style:
-                        TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
               ),
             ],
           )

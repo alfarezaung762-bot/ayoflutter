@@ -1,7 +1,8 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
-import 'package:alarm/alarm.dart'; // Import Alarm
+// Note: Kita tidak butuh import 'package:alarm/alarm.dart' di sini lagi
+// karena alarm baru akan diset saat user klik "GABUNG" di halaman utama.
 import '../../models/challenge_model.dart';
 
 class CreateChallengePage extends StatefulWidget {
@@ -13,13 +14,13 @@ class CreateChallengePage extends StatefulWidget {
 
 class _CreateChallengePageState extends State<CreateChallengePage> {
   final titleC = TextEditingController();
-  final noteC = TextEditingController(); // Description
+  final noteC = TextEditingController();
 
   // List Controller untuk tugas (Dinamis)
   List<TextEditingController> taskControllers = [TextEditingController()];
 
-  int duration = 7; // Default 7 hari
-  TimeOfDay? selectedTime; // Untuk Alarm
+  int duration = 7;
+  TimeOfDay? selectedTime; // Untuk menyimpan jam yang dipilih
 
   // Warna-warna preset
   final List<int> _colors = [
@@ -259,42 +260,15 @@ class _CreateChallengePageState extends State<CreateChallengePage> {
     final box = Hive.box<ChallengeModel>('challenge_box');
     int randomColor = _colors[Random().nextInt(_colors.length)];
 
-    // Generate Alarm ID jika user set waktu
-    int? alarmId;
+    // Siapkan String Jam (Untuk disimpan di Hive)
     String? timeString;
     if (selectedTime != null) {
-      alarmId = DateTime.now().millisecondsSinceEpoch % 100000;
       timeString = "${selectedTime!.hour}:${selectedTime!.minute}";
-
-      // LOGIKA SET ALARM (Package Alarm)
-      final now = DateTime.now();
-      DateTime dt = DateTime(now.year, now.month, now.day, selectedTime!.hour,
-          selectedTime!.minute);
-      if (dt.isBefore(now)) dt = dt.add(const Duration(days: 1));
-
-      final alarmSettings = AlarmSettings(
-        id: alarmId,
-        dateTime: dt,
-        assetAudioPath: 'assets/alarm.mp3',
-        loopAudio: true,
-        vibrate: true,
-        androidFullScreenIntent: true,
-        // [FIX] Menambahkan volumeSettings yang wajib ada
-        volumeSettings: VolumeSettings.fixed(
-          volume: null,
-          volumeEnforced: true,
-        ),
-        notificationSettings: NotificationSettings(
-          title: "Challenge: ${titleC.text}",
-          body: "Jangan lupa kerjakan tugas challenge kamu!",
-          stopButton: null, // Sesuai strategi kita sebelumnya
-          icon: 'notification_icon',
-        ),
-        payload:
-            'challenge', // Payload agar bisa dinavigasi ke halaman challenge nanti
-      );
-      await Alarm.set(alarmSettings: alarmSettings);
     }
+
+    // [PENTING] KITA HAPUS KODE ALARM.SET DI SINI
+    // Alarm akan diset otomatis saat user menekan "GABUNG" di halaman utama.
+    // Di sini kita hanya menyimpan datanya saja.
 
     // Simpan ke Hive
     final newChallenge = ChallengeModel(
@@ -303,12 +277,11 @@ class _CreateChallengePageState extends State<CreateChallengePage> {
       durationDays: duration,
       colorCode: randomColor,
       dailyTasks: validTasks,
-      isJoined: false, // Masuk ke list 'All Challenges' dulu
+      isJoined: false, // Masuk ke list 'All Challenges' (Discover)
       progressDay: 0,
-      todayTaskStatus:
-          List.filled(validTasks.length, false), // Checkbox awal false semua
-      reminderTime: timeString,
-      alarmId: alarmId,
+      todayTaskStatus: List.filled(validTasks.length, false),
+      reminderTime: timeString, // Simpan string jamnya
+      alarmId: null, // ID Alarm null dulu, nanti dibuat saat Gabung
     );
 
     await box.add(newChallenge);
